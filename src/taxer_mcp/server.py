@@ -285,9 +285,9 @@ def export_document_pdf(
     """Render a Taxer document with a saved print template and write a PDF.
 
     user_id is a profile id from list_profiles. document_type is contract,
-    invoice, or act. template_id is a print template, such as 1690 for
-    ZEB ЗЕД. Values come from load_template_data and the layout from that
-    template. The PDF is written to output_path, or to a temporary file when
+    invoice, or act. template_id is the saved print template to fill.
+    Values come from load_template_data and the layout from that template.
+    The PDF is written to output_path, or to a temporary file when
     output_path is omitted. Returns the template title and the file path.
     """
     _require_document_type(document_type)

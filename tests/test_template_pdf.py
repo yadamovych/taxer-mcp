@@ -12,7 +12,7 @@ LAYOUT = """
 <p><span data-name="invoiceNum" data-decorator-type="mergefield">Номер рахунку</span></p>
 <table><tr><th>Item</th></tr>
 <tr><td><span data-name="nomenclatureNumber" data-multiple="true">Номер(N)</span></td>
-<td><strong data-name="contentTfNomenclature" data-decorator-type="mergefield">Номенклатура(N) ЗЕД</strong></td>
+<td><strong data-name="contentTfNomenclature" data-decorator-type="mergefield">Line description</strong></td>
 </tr></table>
 """
 
@@ -28,7 +28,7 @@ def test_fill_template_replaces_labels_and_repeats_line_rows():
     )
 
     assert "Номер рахунку" not in filled
-    assert "Номенклатура(N) ЗЕД" not in filled
+    assert "Line description" not in filled
     assert filled.count("TEST2") == 1
     assert filled.count("<tr>") == 3
     assert "Computer programming services" in filled
@@ -97,13 +97,13 @@ def test_export_document_pdf_tool_writes_filled_template(monkeypatch, tmp_path):
             }
             return httpx2.Response(200, json={"data": {"invoiceNum": "TEST2", "nomenclatureNumber": [1]}})
         if request.url.path == "/api2/finances/template/load_data":
-            assert json.loads(request.url.params["params"]) == {"id": 1690}
+            assert json.loads(request.url.params["params"]) == {"id": 7}
             return httpx2.Response(
                 200,
                 json={
                     "template": {
-                        "id": 1690,
-                        "title": "ZEB ЗЕД",
+                        "id": 7,
+                        "title": "Invoice",
                         "type": "invoice_foreign",
                         "data": LAYOUT,
                     }
@@ -128,9 +128,9 @@ def test_export_document_pdf_tool_writes_filled_template(monkeypatch, tmp_path):
 
     monkeypatch.setattr(template_pdf, "convert_html_to_pdf", fake_convert)
     destination = tmp_path / "invoice.pdf"
-    result = export_document_pdf(200664, 5, "invoice", 1690, str(destination))
+    result = export_document_pdf(200664, 5, "invoice", 7, str(destination))
 
-    assert result["templateTitle"] == "ZEB ЗЕД"
+    assert result["templateTitle"] == "Invoice"
     assert result["templateType"] == "invoice_foreign"
     assert result["path"] == str(destination)
     assert destination.read_bytes() == b"%PDF-1.4"
@@ -141,4 +141,4 @@ def test_export_document_pdf_tool_writes_filled_template(monkeypatch, tmp_path):
 
 def test_export_document_pdf_rejects_unknown_type():
     with pytest.raises(ToolError, match="document_type"):
-        export_document_pdf(1, 2, "waybill", 1690)
+        export_document_pdf(1, 2, "waybill", 7)
