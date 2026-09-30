@@ -1,6 +1,6 @@
 # taxer-mcp
 
-MCP server for [Taxer.ua](https://taxer.ua) finance documents: contracts (договір), invoices (рахунок), and acts (акт).
+MCP server for [Taxer.ua](https://taxer.ua) finance documents (договір, рахунок, акт), money accounts, and bank operations.
 
 Taxer does not publish a public API. This server calls the same internal endpoints as [py-taxer-api](https://github.com/maxsivkov/py-taxer-api), using the browser session cookie from a logged-in Taxer tab. It runs on your machine and sends that cookie only to `taxer.ua`.
 
@@ -14,8 +14,11 @@ Taxer does not publish a public API. This server calls the same internal endpoin
 | `create_contract` | Create a contract. |
 | `create_invoice` | Create an invoice, including VAT (`nds`) and optional line items. |
 | `create_act` | Create an act, including line items. |
+| `list_accounts` | One page of money accounts (bank and cash) for a profile. |
+| `list_operations` | One page of bank operations for a profile. |
+| `get_operation` | One operation: Withdrawal, FlowOutgo, FlowIncome, CurrencyExchange, or AutoExchange. |
 
-Create tools return the new document id. They do not upload files. Update, delete, bank operations, and other document types (waybill, receipt, bill) are not in this version.
+Create tools return the new document id. They do not upload files. Account and operation tools are read-only. Update, delete, and other document types (waybill, receipt, bill) are not in this version. New Taxer paths are taken from py-taxer-api only. Do not probe taxer.ua for endpoints.
 
 `direction` is `0` for a sale and `1` for a purchase. Dates are `YYYY-MM-DD` (midnight UTC) or a full ISO datetime. `nds: -1` means no VAT. Invoices always send `nds`, because Taxer rejects an invoice without it. Invoices and acts can include line items, a money account, a parent contract, and `is_foreign`.
 

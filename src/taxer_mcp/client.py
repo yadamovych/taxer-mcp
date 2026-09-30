@@ -1,8 +1,9 @@
 """HTTP client for the Taxer.ua finance-document API.
 
-Taxer does not publish this API. The current cabinet treats a logged-in browser
-as the ``session_hash`` cookie. ``XSRF-TOKEN`` is optional: older clients sent
-it, and this client forwards it when it is present.
+Taxer does not publish this API. Paths here are the ones already called by
+py-taxer-api. Do not discover new paths by probing taxer.ua: that pattern has
+tripped the site firewall. ``XSRF-TOKEN`` is optional: older clients sent it,
+and this client forwards it when it is present.
 """
 
 from __future__ import annotations
@@ -13,7 +14,15 @@ from urllib.parse import unquote
 
 import httpx2
 
-from taxer_mcp.models import Account, CreatedEntity, Document, DocumentPage
+from taxer_mcp.models import (
+    Account,
+    CreatedEntity,
+    Document,
+    DocumentPage,
+    MoneyAccountPage,
+    OperationDetail,
+    OperationPage,
+)
 
 DEFAULT_BASE_URL = "https://taxer.ua"
 # Public build id from the Taxer web app. Requests without it are not treated as the cabinet.
@@ -108,6 +117,49 @@ class TaxerClient:
         if isinstance(payload, dict) and isinstance(payload.get("document"), dict):
             payload = payload["document"]
         return Document.model_validate(payload)
+
+    def list_accounts(self, user_id: int, page_number: int = 1) -> MoneyAccountPage:
+        payload = self._execute(
+            "GET",
+            "api/finances/account/load",
+            params=self._query(
+                {
+                    "userId": user_id,
+                    "pageNumber": page_number,
+                    "filters": {},
+                }
+            ),
+        )
+        return MoneyAccountPage.model_validate(payload)
+
+    def list_operations(self, user_id: int, page_number: int = 1) -> OperationPage:
+        payload = self._execute(
+            "GET",
+            "api/finances/operation/load",
+            params=self._query(
+                {
+                    "userId": user_id,
+                    "pageNumber": page_number,
+                    "sorting": {"date": "DESC"},
+                    "filters": {},
+                }
+            ),
+        )
+        return OperationPage.model_validate(payload)
+
+    def get_operation(self, user_id: int, operation_id: int, operation_type: str) -> OperationDetail:
+        payload = self._execute(
+            "GET",
+            "api/finances/operation/load_data",
+            params=self._query(
+                {
+                    "userId": user_id,
+                    "id": operation_id,
+                    "type": operation_type,
+                }
+            ),
+        )
+        return OperationDetail.model_validate(payload)
 
     def create_document(self, user_id: int, document: dict[str, Any]) -> CreatedEntity:
         payload = self._execute(

@@ -9,7 +9,7 @@ from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
 from taxer_mcp.client import TaxerClient, TaxerError
-from taxer_mcp.models import DOCUMENT_TYPES, ActLine, build_document, dump_model
+from taxer_mcp.models import DOCUMENT_TYPES, OPERATION_TYPES, ActLine, build_document, dump_model
 
 mcp = MCPServer("taxer")
 
@@ -74,6 +74,52 @@ def get_document(user_id: int, document_id: int, document_type: str) -> dict[str
 
     def run(client: TaxerClient) -> dict[str, Any]:
         return dump_model(client.get_document(user_id, document_id, document_type))
+
+    return _call(run)
+
+
+@mcp.tool()
+def list_accounts(user_id: int, page_number: int = 1) -> dict[str, Any]:
+    """List one page of money accounts for a Taxer profile.
+
+    user_id is a profile id from list_profiles. page_number starts at 1.
+    An account id from this list is account_id on an invoice or act.
+    """
+    if page_number < 1:
+        raise ToolError("page_number starts at 1")
+
+    def run(client: TaxerClient) -> dict[str, Any]:
+        return dump_model(client.list_accounts(user_id, page_number))
+
+    return _call(run)
+
+
+@mcp.tool()
+def list_operations(user_id: int, page_number: int = 1) -> dict[str, Any]:
+    """List one page of bank operations for a Taxer profile.
+
+    user_id is a profile id from list_profiles. page_number starts at 1.
+    """
+    if page_number < 1:
+        raise ToolError("page_number starts at 1")
+
+    def run(client: TaxerClient) -> dict[str, Any]:
+        return dump_model(client.list_operations(user_id, page_number))
+
+    return _call(run)
+
+
+@mcp.tool()
+def get_operation(user_id: int, operation_id: int, operation_type: str) -> dict[str, Any]:
+    """Load one Taxer bank operation.
+
+    operation_type is Withdrawal, FlowOutgo, FlowIncome, CurrencyExchange,
+    or AutoExchange.
+    """
+    _require_operation_type(operation_type)
+
+    def run(client: TaxerClient) -> dict[str, Any]:
+        return dump_model(client.get_operation(user_id, operation_id, operation_type))
 
     return _call(run)
 
@@ -251,6 +297,12 @@ def _require_document_type(document_type: str) -> None:
     if document_type not in DOCUMENT_TYPES:
         allowed = ", ".join(DOCUMENT_TYPES)
         raise ToolError(f"document_type must be one of {allowed}")
+
+
+def _require_operation_type(operation_type: str) -> None:
+    if operation_type not in OPERATION_TYPES:
+        allowed = ", ".join(OPERATION_TYPES)
+        raise ToolError(f"operation_type must be one of {allowed}")
 
 
 def main() -> None:

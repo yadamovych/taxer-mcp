@@ -1,0 +1,21 @@
+{
+  "paginator": {
+    "currentPage": 1,
+    "recordsOnPage": 15,
+    "totalPages": 1,
+    "totalRecords": 1
+  },
+  "accounts": [
+    {
+      "id": 3,
+      "balance": 1500.5,
+      "title": "Монобанк",
+      "currency": "UAH",
+      "num": "UA00TEST",
+      "bank": "Універсал Банк",
+      "mfo": "322001",
+      "comment": "основний"
+    }
+  ],
+  "accountsCurrencies": ["UAH"]
+}

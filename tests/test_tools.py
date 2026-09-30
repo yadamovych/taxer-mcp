@@ -13,7 +13,10 @@ from taxer_mcp.server import (
     create_contract,
     create_invoice,
     get_document,
+    get_operation,
+    list_accounts,
     list_documents,
+    list_operations,
     list_profiles,
     mcp,
 )
@@ -39,6 +42,9 @@ def test_server_registers_document_tools():
         "list_profiles",
         "list_documents",
         "get_document",
+        "list_accounts",
+        "list_operations",
+        "get_operation",
         "create_contract",
         "create_invoice",
         "create_act",
@@ -64,6 +70,21 @@ def test_list_documents_rejects_page_zero():
 def test_get_document_rejects_unknown_type():
     with pytest.raises(ToolError, match="document_type"):
         get_document(1, 2, "waybill")
+
+
+def test_list_accounts_rejects_page_zero():
+    with pytest.raises(ToolError, match="page_number"):
+        list_accounts(1, 0)
+
+
+def test_list_operations_rejects_page_zero():
+    with pytest.raises(ToolError, match="page_number"):
+        list_operations(1, 0)
+
+
+def test_get_operation_rejects_unknown_type():
+    with pytest.raises(ToolError, match="operation_type"):
+        get_operation(1, 2, "transfer")
 
 
 def test_create_contract_and_invoice_share_payload_shape(monkeypatch):
