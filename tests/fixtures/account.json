@@ -1,0 +1,15 @@
+{
+  "account": {
+    "accountId": 217106,
+    "accountName": "Свирид",
+    "users": [
+      {
+        "id": 200664,
+        "idKey": null,
+        "titleName": "ФОП Свиридов С. С.",
+        "isCompany": false
+      }
+    ],
+    "unknownExtra": true
+  }
+}

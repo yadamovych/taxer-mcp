@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "taxer": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["--directory", "${workspaceFolder}", "run", "taxer-mcp"],
+      "envFile": "${workspaceFolder}/.env"
+    }
+  }
+}
