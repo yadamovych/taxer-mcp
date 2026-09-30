@@ -17,9 +17,9 @@ Taxer does not publish a public API. This server calls the same internal endpoin
 | `list_accounts` | One page of money accounts (bank and cash) for a profile. |
 | `list_operations` | One page of bank operations for a profile. |
 | `get_operation` | One operation: Withdrawal, FlowOutgo, FlowIncome, CurrencyExchange, or AutoExchange. |
-| `export_document_pdf` | Fill a saved print template for one document and write a PDF. Document and template id are inputs. |
+| `export_document_pdf` | Fill a saved print template, write a PDF, and store that filled template on the document. Document and template id are inputs. |
 
-Create tools return the new document id. They do not upload files. Account and operation tools are read-only. `export_document_pdf` loads `load_template_data` and `api2/finances/template/load_data`, fills the template's merge fields, and sends the HTML to Taxer's PDF converter. The session cookie is not sent to the converter. Update, delete, and other document types (waybill, receipt, bill) are not in this version. Do not probe taxer.ua for new endpoints.
+Create tools return the new document id. They do not upload files. Account and operation tools are read-only. `export_document_pdf` loads `load_template_data` and `api2/finances/template/load_data`, fills the template's merge fields, and sends the HTML to Taxer's PDF converter. The session cookie is not sent to the converter. It then stores the filled template on the document with `upload_file` and `generated` set, the same call the cabinet uses when you save from the document editor. Update, delete, and other document types (waybill, receipt, bill) are not in this version. Do not probe taxer.ua for new endpoints.
 
 `direction` is `0` for a sale and `1` for a purchase. Dates are `YYYY-MM-DD` (midnight UTC) or a full ISO datetime. `nds: -1` means no VAT. Invoices always send `nds`, because Taxer rejects an invoice without it. Invoices and acts can include line items, a money account, a parent contract, and `is_foreign`.
 
