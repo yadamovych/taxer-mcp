@@ -1,0 +1,23 @@
+{
+  "paginator": {
+    "currentPage": 1,
+    "recordsOnPage": 20,
+    "totalPages": 2,
+    "totalRecords": 21
+  },
+  "documents": [
+    {
+      "id": 15,
+      "type": "contract",
+      "number": "15",
+      "title": "Договір послуг",
+      "timestamp": 1711929600,
+      "direction": 0,
+      "currency": "UAH",
+      "total": 1200.5,
+      "paid": 0,
+      "comment": "квітень",
+      "contractor": {"id": 9, "title": "ТОВ Ромашка"}
+    }
+  ]
+}

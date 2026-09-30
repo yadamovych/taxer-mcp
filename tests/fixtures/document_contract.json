@@ -1,0 +1,14 @@
+{
+  "id": 15,
+  "type": "contract",
+  "number": "15",
+  "title": "Договір послуг",
+  "timestamp": 1711929600,
+  "expireTimestamp": 1743465600,
+  "direction": 0,
+  "currency": "UAH",
+  "total": 1200.5,
+  "description": "Консультації",
+  "place": "Київ",
+  "contractor": {"id": 9, "title": "ТОВ Ромашка"}
+}

@@ -1,0 +1,24 @@
+{
+  "document": {
+    "id": 44,
+    "type": "act",
+    "number": "44",
+    "title": "Акт",
+    "timestamp": 1711929600,
+    "direction": 0,
+    "currency": "UAH",
+    "total": 500,
+    "nds": -1,
+    "actPlace": "Київ",
+    "parent": {"id": 15, "type": "contract", "num": "15"},
+    "account": {"id": 3, "title": "Моно", "currency": "UAH"},
+    "contents": [
+      {
+        "title": "Консультація",
+        "measure": "год",
+        "quantity": 2,
+        "price": 250
+      }
+    ]
+  }
+}
