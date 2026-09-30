@@ -43,20 +43,33 @@ Reload the window, then enable **taxer** under Customize. Cursor asks before eac
 
 Ask Cursor to list your Taxer profiles. A 401 means the cookie is incomplete or expired: copy a fresh `Cookie` header and reload MCP.
 
-## Get the login cookie
+## Get the full cookie
 
-Taxer has no API token. The login is the browser session cookie.
+Taxer has no API token. The login is the whole `Cookie` header from a logged-in tab. `session_hash` alone is rejected with 401. `document.cookie` in the console is also incomplete: the browser hides `HttpOnly` cookies from JavaScript, including `PHPSESSID`, `session_key`, and `session_key_hash`.
 
-1. Log in at [taxer.ua](https://taxer.ua/uk/login).
-2. Open DevTools (F12) → Network.
-3. Reload the cabinet, or open any page inside it.
-4. Select a request to `taxer.ua/api/` that returned 200, such as `load_account`.
-5. In Request Headers, copy the whole `Cookie` value.
-6. Paste it into `.env` as `TAXER_COOKIE`.
+1. Log in at [taxer.ua](https://taxer.ua/uk/login) and open the cabinet, for example [Documents](https://taxer.ua/uk/my/finances/documents).
+2. Open DevTools (F12) → **Network**.
+3. Reload the page.
+4. Select a request to `taxer.ua` that returned 200, such as `load_account` or the documents list.
+5. Open **Headers** → **Request Headers**.
+6. Copy the entire `Cookie` value. It is one line of `name=value` pairs separated by semicolons. Do not stop at `session_hash`.
 
-The current Taxer cabinet identifies a login with the `session_hash` cookie. There is no `XSRF-TOKEN` cookie to find. After you are logged in, `document.cookie` in the console includes `session_hash`, and so does the `Cookie` request header. Paste either value. If an `XSRF-TOKEN` cookie is also present, leave it in the string; the server forwards it.
+The copied line must include all of these:
 
-DevTools → Application → Cookies → `https://taxer.ua` shows when that session cookie expires. Taxer does not publish the lifetime. Log out, or sign in again, and the copied value stops working immediately. When tools return 401, repeat the steps above.
+- `PHPSESSID`
+- `session_key`
+- `session_hash`
+- `session_key_hash`
+
+Analytics cookies such as `_ga` and `_clck` can stay in the string. There is no `XSRF-TOKEN` cookie. If one is present, leave it in.
+
+Paste the line into `.env` inside double quotes:
+
+```
+TAXER_COOKIE="PHPSESSID=...; session_key=...; session_hash=...; session_key_hash=..."
+```
+
+DevTools → **Application** → **Cookies** → `https://taxer.ua` shows when those cookies expire. Taxer does not publish the lifetime. Log out, or sign in again, and the copied value stops working immediately. When tools return 401, copy a fresh `Cookie` header and reload MCP.
 
 ## Tests
 
