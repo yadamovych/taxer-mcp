@@ -131,13 +131,24 @@ def create_invoice(
     expire_date: str | None = None,
     description: str | None = None,
     place: str | None = None,
+    nds: int = -1,
+    lines: list[ActLine] | None = None,
+    account_id: int | None = None,
+    parent_id: int | None = None,
+    parent_type: str = "contract",
+    is_foreign: int | None = None,
 ) -> dict[str, int]:
     """Create an invoice (рахунок) in Taxer.
 
-    Fields match create_contract. date and expire_date are ISO dates
-    (YYYY-MM-DD) or datetimes. direction is 0 for a sale and 1 for a purchase.
+    date and expire_date are ISO dates (YYYY-MM-DD) or datetimes. direction
+    is 0 for a sale and 1 for a purchase. nds is the VAT rate; -1 means no
+    VAT and is always sent, because Taxer rejects an invoice without it.
+    lines, when set, is at least one item with title, measure, quantity, and
+    price. parent_id links a contract when set. account_id is a Taxer money
+    account. is_foreign is 1 for a foreign contractor.
     Returns the new document id. This does not upload a file.
     """
+    parsed_lines = _parse_lines(lines, "invoice")
     return _create(
         "invoice",
         user_id=user_id,
@@ -152,6 +163,12 @@ def create_invoice(
         expire_date=expire_date,
         description=description,
         place=place,
+        nds=nds,
+        account_id=account_id,
+        parent_id=parent_id,
+        parent_type=parent_type,
+        is_foreign=is_foreign,
+        lines=parsed_lines,
     )
 
 
@@ -184,9 +201,7 @@ def create_act(
     and 1 for a purchase.
     Returns the new document id. This does not upload a file.
     """
-    if not lines:
-        raise ToolError("An act needs at least one line")
-    parsed_lines = [ActLine.model_validate(line) for line in lines]
+    parsed_lines = _parse_lines(lines, "act")
     return _create(
         "act",
         user_id=user_id,
@@ -208,6 +223,14 @@ def create_act(
         is_foreign=is_foreign,
         lines=parsed_lines,
     )
+
+
+def _parse_lines(lines: list[ActLine] | None, doc_type: str) -> list[ActLine] | None:
+    if lines is None:
+        return None
+    if not lines:
+        raise ToolError(f"An {doc_type} needs at least one line")
+    return [ActLine.model_validate(line) for line in lines]
 
 
 def _create(doc_type: str, **fields: Any) -> dict[str, int]:

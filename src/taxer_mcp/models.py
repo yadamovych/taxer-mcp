@@ -117,7 +117,7 @@ class CreatedEntity(TaxerModel):
 
 
 class ActLine(BaseModel):
-    """One service or goods line on an act."""
+    """One service or goods line on an invoice or act."""
 
     title: str
     measure: str

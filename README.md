@@ -12,12 +12,12 @@ Taxer does not publish a public API. This server calls the same internal endpoin
 | `list_documents` | One page of documents for a profile. |
 | `get_document` | One contract, invoice, or act. |
 | `create_contract` | Create a contract. |
-| `create_invoice` | Create an invoice. |
+| `create_invoice` | Create an invoice, including VAT (`nds`) and optional line items. |
 | `create_act` | Create an act, including line items. |
 
 Create tools return the new document id. They do not upload files. Update, delete, bank operations, and other document types (waybill, receipt, bill) are not in this version.
 
-`direction` is `0` for a sale and `1` for a purchase. Dates are `YYYY-MM-DD` (midnight UTC) or a full ISO datetime. On an act, `nds: -1` means no VAT.
+`direction` is `0` for a sale and `1` for a purchase. Dates are `YYYY-MM-DD` (midnight UTC) or a full ISO datetime. `nds: -1` means no VAT. Invoices always send `nds`, because Taxer rejects an invoice without it. Invoices and acts can include line items, a money account, a parent contract, and `is_foreign`.
 
 ## Setup in Cursor
 

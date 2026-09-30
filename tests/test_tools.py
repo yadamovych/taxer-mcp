@@ -99,6 +99,72 @@ def test_create_contract_and_invoice_share_payload_shape(monkeypatch):
     assert contract["document"]["contractor"] == {"id": 9}
     assert contract["document"]["file"] == {}
     assert "date" not in contract["document"]
+    assert "nds" not in contract["document"]
+    assert invoice["document"]["nds"] == -1
+
+
+def test_create_invoice_sends_lines_parent_and_foreign_flag(monkeypatch):
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"id": 8})
+
+    _install(monkeypatch, handler)
+    result = create_invoice(
+        user_id=200664,
+        date="2026-09-30",
+        number="TEST",
+        direction=0,
+        currency="EUR",
+        title="TEST Рахунок",
+        total=7035,
+        contractor_id=1,
+        lines=[
+            ActLine(
+                title="Послуги комп’ютерного програмування",
+                measure="днів",
+                quantity=21,
+                price=335,
+                title_tf="Computer programming services",
+                measure_tf="days",
+            )
+        ],
+        account_id=2,
+        parent_id=1,
+        is_foreign=1,
+    )
+
+    document = seen["body"]["document"]
+    assert result == {"id": 8}
+    assert document["type"] == "invoice"
+    assert document["nds"] == -1
+    assert document["isForeign"] == 1
+    assert document["account"] == {"id": 2}
+    assert document["parent"] == {"id": 1, "type": "contract"}
+    assert document["contents"] == [
+        {
+            "title": "Послуги комп’ютерного програмування",
+            "titleTf": "Computer programming services",
+            "measure": "днів",
+            "measureTf": "days",
+            "quantity": 21,
+            "price": 335,
+        }
+    ]
+
+
+def test_create_invoice_rejects_an_empty_line_list():
+    with pytest.raises(ToolError, match="at least one line"):
+        create_invoice(
+            user_id=1,
+            date="2024-04-01",
+            number="1",
+            direction=0,
+            currency="EUR",
+            title="Рахунок",
+            lines=[],
+        )
 
 
 def test_create_act_sends_lines_and_parent(monkeypatch):
