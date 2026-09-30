@@ -16,6 +16,8 @@ import httpx2
 from taxer_mcp.models import Account, CreatedEntity, Document, DocumentPage
 
 DEFAULT_BASE_URL = "https://taxer.ua"
+# Public build id from the Taxer web app. Requests without it are not treated as the cabinet.
+REVISION = "app:Y45z63lutzk5p0XR"
 
 
 class TaxerError(Exception):
@@ -157,7 +159,9 @@ class TaxerClient:
             "Accept": "application/json, text/plain, */*",
             "Content-Type": "application/json; charset=UTF-8",
             "Referer": f"{self.base_url}/{self.lang}/my/dashboard",
+            "Revision": REVISION,
             "User-Agent": "taxer-mcp/0.1",
+            "X-Requested-With": "XMLHttpRequest",
         }
         if self._token:
             headers["X-XSRF-TOKEN"] = self._token

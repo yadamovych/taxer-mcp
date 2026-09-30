@@ -55,6 +55,8 @@ def test_load_account_sends_xsrf_header_and_ignores_unknown_fields():
     assert request.url.path == "/api/user/login/load_account"
     assert request.url.params["lang"] == "uk"
     assert request.headers["X-XSRF-TOKEN"] == "abc=token"
+    assert request.headers["Revision"] == "app:Y45z63lutzk5p0XR"
+    assert request.headers["X-Requested-With"] == "XMLHttpRequest"
     assert "session_hash=sess-1" in request.headers["Cookie"]
     assert account.accountId == 217106
     assert account.users[0].id == 200664
