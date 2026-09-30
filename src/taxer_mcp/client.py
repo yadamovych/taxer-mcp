@@ -58,6 +58,7 @@ class TaxerClient:
         self._token = unquote(token)
         self._owns_client = client is None
         self._client = client or httpx2.Client(base_url=self.base_url, timeout=30.0)
+        self._client.cookies.update(self._cookies)
 
     def close(self) -> None:
         if self._owns_client:
@@ -136,7 +137,6 @@ class TaxerClient:
                 params=params,
                 json=json_body,
                 headers=self._headers(),
-                cookies=self._cookies,
             )
             response.raise_for_status()
         except httpx2.HTTPStatusError as exc:

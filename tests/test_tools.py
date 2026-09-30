@@ -1,4 +1,6 @@
+import asyncio
 import json
+from pathlib import Path
 
 import httpx2
 import pytest
@@ -6,6 +8,7 @@ import pytest
 from taxer_mcp.client import TaxerClient
 from taxer_mcp.models import ActLine
 from taxer_mcp.server import (
+    ToolError,
     create_act,
     create_contract,
     create_invoice,
@@ -14,9 +17,8 @@ from taxer_mcp.server import (
     list_profiles,
     mcp,
 )
-from taxer_mcp.server import ToolError
 
-FIXTURES = __import__("pathlib").Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def _load(name: str) -> dict:
@@ -31,7 +33,8 @@ def _install(monkeypatch, handler):
 
 
 def test_server_registers_document_tools():
-    names = {tool.name for tool in mcp._tool_manager.list_tools()}
+    tools = asyncio.run(mcp.list_tools())
+    names = {tool.name for tool in tools}
     assert names == {
         "list_profiles",
         "list_documents",

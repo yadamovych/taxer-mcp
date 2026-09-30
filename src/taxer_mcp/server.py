@@ -212,7 +212,10 @@ def create_act(
 
 def _create(doc_type: str, **fields: Any) -> dict[str, int]:
     user_id = fields.pop("user_id")
-    document = build_document(doc_type=doc_type, **fields)
+    try:
+        document = build_document(doc_type=doc_type, **fields)
+    except ValueError as exc:
+        raise ToolError(str(exc)) from exc
 
     def run(client: TaxerClient) -> dict[str, int]:
         created = client.create_document(user_id, document)
