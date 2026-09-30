@@ -43,6 +43,33 @@ Reload the window, then enable **taxer** under Customize. Cursor asks before eac
 
 Ask Cursor to list your Taxer profiles. A 401 means the cookie is incomplete or expired: copy a fresh `Cookie` header and reload MCP.
 
+## Use on another computer
+
+Install [uv](https://docs.astral.sh/uv/) on that machine. You do not need to clone this repo. Cursor can start the server from GitHub with `uvx`.
+
+Put this in the user MCP config (`~/.cursor/mcp.json`, or `%USERPROFILE%\.cursor\mcp.json` on Windows). Paste the cookie from [Get the full cookie](#get-the-full-cookie). Keep it in quotes; it contains semicolons.
+
+```json
+{
+  "mcpServers": {
+    "taxer": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/yadamovych/taxer-mcp",
+        "taxer-mcp"
+      ],
+      "env": {
+        "TAXER_COOKIE": "paste the Cookie header here"
+      }
+    }
+  }
+}
+```
+
+Reload the window, then enable **taxer**. If `uvx` is missing from Output → MCP Logs, install uv or put its full path in `command`.
+
 ## Get the full cookie
 
 Taxer has no API token. The login is the whole `Cookie` header from a logged-in tab. `session_hash` alone is rejected with 401. `document.cookie` in the console is also incomplete: the browser hides `HttpOnly` cookies from JavaScript, including `PHPSESSID`, `session_key`, and `session_key_hash`.
