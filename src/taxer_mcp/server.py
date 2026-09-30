@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import os
+import tempfile
+from pathlib import Path
 from typing import Any
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
+from taxer_mcp import template_pdf
 from taxer_mcp.client import TaxerClient, TaxerError
 from taxer_mcp.models import DOCUMENT_TYPES, OPERATION_TYPES, ActLine, build_document, dump_model
 
@@ -269,6 +272,51 @@ def create_act(
         is_foreign=is_foreign,
         lines=parsed_lines,
     )
+
+
+@mcp.tool()
+def export_document_pdf(
+    user_id: int,
+    document_id: int,
+    document_type: str,
+    template_id: int,
+    output_path: str | None = None,
+) -> dict[str, Any]:
+    """Render a Taxer document with a saved print template and write a PDF.
+
+    user_id is a profile id from list_profiles. document_type is contract,
+    invoice, or act. template_id is a print template, such as 1690 for
+    ZEB ЗЕД. Values come from load_template_data and the layout from that
+    template. The PDF is written to output_path, or to a temporary file when
+    output_path is omitted. Returns the template title and the file path.
+    """
+    _require_document_type(document_type)
+    destination = _pdf_destination(output_path, document_type, document_id)
+    converter_url = os.environ.get("TAXER_PDF_CONVERTER_URL", template_pdf.DEFAULT_PDF_CONVERTER_URL)
+
+    def run(client: TaxerClient) -> dict[str, Any]:
+        pdf, info = template_pdf.export_document_pdf(
+            client,
+            user_id=user_id,
+            document_id=document_id,
+            document_type=document_type,
+            template_id=template_id,
+            converter_url=converter_url,
+        )
+        destination.write_bytes(pdf)
+        return {**info, "path": str(destination), "bytes": len(pdf)}
+
+    return _call(run)
+
+
+def _pdf_destination(output_path: str | None, document_type: str, document_id: int) -> Path:
+    if output_path:
+        path = Path(output_path).expanduser()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+    fd, name = tempfile.mkstemp(prefix=f"taxer-{document_type}-{document_id}-", suffix=".pdf")
+    os.close(fd)
+    return Path(name)
 
 
 def _parse_lines(lines: list[ActLine] | None, doc_type: str) -> list[ActLine] | None:
