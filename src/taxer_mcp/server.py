@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import os
+import tempfile
+from pathlib import Path
 from typing import Any
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
+from taxer_mcp import template_pdf
 from taxer_mcp.client import TaxerClient, TaxerError
-from taxer_mcp.models import DOCUMENT_TYPES, ActLine, build_document, dump_model
+from taxer_mcp.models import DOCUMENT_TYPES, OPERATION_TYPES, ActLine, build_document, dump_model
 
 mcp = MCPServer("taxer")
 
@@ -74,6 +77,52 @@ def get_document(user_id: int, document_id: int, document_type: str) -> dict[str
 
     def run(client: TaxerClient) -> dict[str, Any]:
         return dump_model(client.get_document(user_id, document_id, document_type))
+
+    return _call(run)
+
+
+@mcp.tool()
+def list_accounts(user_id: int, page_number: int = 1) -> dict[str, Any]:
+    """List one page of money accounts for a Taxer profile.
+
+    user_id is a profile id from list_profiles. page_number starts at 1.
+    An account id from this list is account_id on an invoice or act.
+    """
+    if page_number < 1:
+        raise ToolError("page_number starts at 1")
+
+    def run(client: TaxerClient) -> dict[str, Any]:
+        return dump_model(client.list_accounts(user_id, page_number))
+
+    return _call(run)
+
+
+@mcp.tool()
+def list_operations(user_id: int, page_number: int = 1) -> dict[str, Any]:
+    """List one page of bank operations for a Taxer profile.
+
+    user_id is a profile id from list_profiles. page_number starts at 1.
+    """
+    if page_number < 1:
+        raise ToolError("page_number starts at 1")
+
+    def run(client: TaxerClient) -> dict[str, Any]:
+        return dump_model(client.list_operations(user_id, page_number))
+
+    return _call(run)
+
+
+@mcp.tool()
+def get_operation(user_id: int, operation_id: int, operation_type: str) -> dict[str, Any]:
+    """Load one Taxer bank operation.
+
+    operation_type is Withdrawal, FlowOutgo, FlowIncome, CurrencyExchange,
+    or AutoExchange.
+    """
+    _require_operation_type(operation_type)
+
+    def run(client: TaxerClient) -> dict[str, Any]:
+        return dump_model(client.get_operation(user_id, operation_id, operation_type))
 
     return _call(run)
 
@@ -225,6 +274,51 @@ def create_act(
     )
 
 
+@mcp.tool()
+def export_document_pdf(
+    user_id: int,
+    document_id: int,
+    document_type: str,
+    template_id: int,
+    output_path: str | None = None,
+) -> dict[str, Any]:
+    """Render a Taxer document with a saved print template and write a PDF.
+
+    user_id is a profile id from list_profiles. document_type is contract,
+    invoice, or act. template_id is the saved print template to fill.
+    Values come from load_template_data and the layout from that template.
+    The PDF is written to output_path, or to a temporary file when
+    output_path is omitted. Returns the template title and the file path.
+    """
+    _require_document_type(document_type)
+    destination = _pdf_destination(output_path, document_type, document_id)
+    converter_url = os.environ.get("TAXER_PDF_CONVERTER_URL", template_pdf.DEFAULT_PDF_CONVERTER_URL)
+
+    def run(client: TaxerClient) -> dict[str, Any]:
+        pdf, info = template_pdf.export_document_pdf(
+            client,
+            user_id=user_id,
+            document_id=document_id,
+            document_type=document_type,
+            template_id=template_id,
+            converter_url=converter_url,
+        )
+        destination.write_bytes(pdf)
+        return {**info, "path": str(destination), "bytes": len(pdf)}
+
+    return _call(run)
+
+
+def _pdf_destination(output_path: str | None, document_type: str, document_id: int) -> Path:
+    if output_path:
+        path = Path(output_path).expanduser()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+    fd, name = tempfile.mkstemp(prefix=f"taxer-{document_type}-{document_id}-", suffix=".pdf")
+    os.close(fd)
+    return Path(name)
+
+
 def _parse_lines(lines: list[ActLine] | None, doc_type: str) -> list[ActLine] | None:
     if lines is None:
         return None
@@ -251,6 +345,12 @@ def _require_document_type(document_type: str) -> None:
     if document_type not in DOCUMENT_TYPES:
         allowed = ", ".join(DOCUMENT_TYPES)
         raise ToolError(f"document_type must be one of {allowed}")
+
+
+def _require_operation_type(operation_type: str) -> None:
+    if operation_type not in OPERATION_TYPES:
+        allowed = ", ".join(OPERATION_TYPES)
+        raise ToolError(f"operation_type must be one of {allowed}")
 
 
 def main() -> None:

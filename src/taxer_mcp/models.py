@@ -8,6 +8,8 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 DOCUMENT_TYPES = ("contract", "invoice", "act")
+# Types py-taxer-api already sends to api/finances/operation/load_data.
+OPERATION_TYPES = ("Withdrawal", "FlowOutgo", "FlowIncome", "CurrencyExchange", "AutoExchange")
 
 
 class TaxerModel(BaseModel):
@@ -110,6 +112,96 @@ class Paginator(TaxerModel):
 class DocumentPage(TaxerModel):
     paginator: Paginator | None = None
     documents: list[Document] = Field(default_factory=list)
+
+
+class OperationContent(TaxerModel):
+    id: int | None = None
+    timestamp: int | None = None
+    date: datetime | None = None
+    sumCurrency: float | None = None
+    accountTitle: str | None = None
+    accountCurrency: str | None = None
+    comment: str | None = None
+
+    @model_validator(mode="after")
+    def fill_date_from_timestamp(self) -> OperationContent:
+        self.date = _date_from_timestamp(self.timestamp, self.date)
+        return self
+
+
+class Operation(TaxerModel):
+    id: int | None = None
+    type: str | None = None
+    comment: str | None = None
+    contents: list[OperationContent] | None = None
+
+
+class ExchangeDifference(TaxerModel):
+    id: int | None = None
+    operationId: int | None = None
+    total: float | None = None
+
+
+class OperationDetail(TaxerModel):
+    id: int | None = None
+    type: str | None = None
+    comment: str | None = None
+    contents: list[OperationContent] | None = None
+    timestamp: int | None = None
+    date: datetime | None = None
+    uahTimestamp: int | None = None
+    uahDate: datetime | None = None
+    contractor: Contractor | None = None
+    parent: ParentDocument | None = None
+    payedSum: float | None = None
+    financeType: str | None = None
+    account: OperationAccount | None = None
+    total: float | None = None
+    outgoTotal: float | None = None
+    outgoAccount: OperationAccount | None = None
+    incomeCurrency: float | None = None
+    incomeAccount: OperationAccount | None = None
+    exchangeDifference: ExchangeDifference | None = None
+    uahTotal: float | None = None
+    uahAccount: OperationAccount | None = None
+    currencyAccount: OperationAccount | None = None
+    currencyTotal: float | None = None
+    calcExchangeDiff: bool | None = None
+
+    @model_validator(mode="after")
+    def fill_dates_from_timestamps(self) -> OperationDetail:
+        self.date = _date_from_timestamp(self.timestamp, self.date)
+        self.uahDate = _date_from_timestamp(self.uahTimestamp, self.uahDate)
+        return self
+
+
+class OperationPage(TaxerModel):
+    paginator: Paginator | None = None
+    operations: list[Operation] = Field(default_factory=list)
+    currencies: list[str] | None = None
+
+
+class MoneyAccount(TaxerModel):
+    id: int | None = None
+    balance: float | None = None
+    title: str | None = None
+    currency: str | None = None
+    num: str | None = None
+    bank: str | None = None
+    mfo: str | None = None
+    comment: str | None = None
+    tfBankPlace: str | None = None
+    tfBankSwift: str | None = None
+    tfBankCorr: str | None = None
+    tfBankCorrPlace: str | None = None
+    tfBankCorrSwift: str | None = None
+    tfBankCorrAccount: str | None = None
+
+
+class MoneyAccountPage(TaxerModel):
+    paginator: Paginator | None = None
+    accounts: list[MoneyAccount] = Field(default_factory=list)
+    accountsCurrencies: list[str] | None = None
 
 
 class CreatedEntity(TaxerModel):

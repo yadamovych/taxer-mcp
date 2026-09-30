@@ -141,6 +141,72 @@ def test_create_document_posts_payload_and_returns_id():
     assert created.id == 91
 
 
+def test_list_accounts_sends_paged_params_query():
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["request"] = request
+        return httpx2.Response(200, json=_load("accounts.json"))
+
+    page = _client(handler).list_accounts(200664, 1)
+
+    request = seen["request"]
+    assert request.method == "GET"
+    assert request.url.path == "/api/finances/account/load"
+    assert json.loads(request.url.params["params"]) == {
+        "userId": 200664,
+        "pageNumber": 1,
+        "filters": {},
+    }
+    assert page.accounts[0].id == 3
+    assert page.accounts[0].balance == 1500.5
+    assert page.accountsCurrencies == ["UAH"]
+
+
+def test_list_operations_fills_content_date():
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["request"] = request
+        return httpx2.Response(200, json=_load("operations.json"))
+
+    page = _client(handler).list_operations(200664, 2)
+
+    request = seen["request"]
+    assert request.url.path == "/api/finances/operation/load"
+    assert json.loads(request.url.params["params"]) == {
+        "userId": 200664,
+        "pageNumber": 2,
+        "sorting": {"date": "DESC"},
+        "filters": {},
+    }
+    content = page.operations[0].contents
+    assert content is not None
+    assert content[0].date is not None
+    assert content[0].date.year == 2024
+    assert content[0].sumCurrency == 1000.0
+
+
+def test_get_operation_sends_id_and_type():
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["request"] = request
+        return httpx2.Response(200, json=_load("operation_income.json"))
+
+    operation = _client(handler).get_operation(200664, 10, "FlowIncome")
+
+    params = json.loads(seen["request"].url.params["params"])
+    assert seen["request"].url.path == "/api/finances/operation/load_data"
+    assert params == {"userId": 200664, "id": 10, "type": "FlowIncome"}
+    assert operation.total == 1000.0
+    assert operation.account is not None
+    assert operation.account.id == 3
+    assert operation.date is not None
+    assert operation.contractor is not None
+    assert operation.contractor.title == "ТОВ Приклад"
+
+
 def test_http_error_becomes_taxer_error():
     def handler(request: httpx2.Request) -> httpx2.Response:
         return httpx2.Response(401, text="unauthenticated")

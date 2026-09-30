@@ -1,0 +1,18 @@
+{
+  "id": 10,
+  "type": "FlowIncome",
+  "comment": "Оплата за рахунком",
+  "timestamp": 1711929600,
+  "total": 1000.0,
+  "payedSum": 1000.0,
+  "financeType": "operational",
+  "account": {
+    "id": 3,
+    "title": "Монобанк",
+    "currency": "UAH"
+  },
+  "contractor": {
+    "id": 9,
+    "title": "ТОВ Приклад"
+  }
+}

@@ -1,8 +1,11 @@
 """HTTP client for the Taxer.ua finance-document API.
 
-Taxer does not publish this API. The current cabinet treats a logged-in browser
-as the ``session_hash`` cookie. ``XSRF-TOKEN`` is optional: older clients sent
-it, and this client forwards it when it is present.
+Taxer does not publish this API. Document and operation paths are the ones
+already called by py-taxer-api. Template PDF export uses the cabinet calls
+``load_template_data``, ``api2/finances/template/load_data``, and
+``api2/generator/file/converter_token``. Do not discover new paths by probing
+taxer.ua. ``XSRF-TOKEN`` is optional: older clients sent it, and this client
+forwards it when it is present.
 """
 
 from __future__ import annotations
@@ -13,7 +16,15 @@ from urllib.parse import unquote
 
 import httpx2
 
-from taxer_mcp.models import Account, CreatedEntity, Document, DocumentPage
+from taxer_mcp.models import (
+    Account,
+    CreatedEntity,
+    Document,
+    DocumentPage,
+    MoneyAccountPage,
+    OperationDetail,
+    OperationPage,
+)
 
 DEFAULT_BASE_URL = "https://taxer.ua"
 # Public build id from the Taxer web app. Requests without it are not treated as the cabinet.
@@ -109,6 +120,49 @@ class TaxerClient:
             payload = payload["document"]
         return Document.model_validate(payload)
 
+    def list_accounts(self, user_id: int, page_number: int = 1) -> MoneyAccountPage:
+        payload = self._execute(
+            "GET",
+            "api/finances/account/load",
+            params=self._query(
+                {
+                    "userId": user_id,
+                    "pageNumber": page_number,
+                    "filters": {},
+                }
+            ),
+        )
+        return MoneyAccountPage.model_validate(payload)
+
+    def list_operations(self, user_id: int, page_number: int = 1) -> OperationPage:
+        payload = self._execute(
+            "GET",
+            "api/finances/operation/load",
+            params=self._query(
+                {
+                    "userId": user_id,
+                    "pageNumber": page_number,
+                    "sorting": {"date": "DESC"},
+                    "filters": {},
+                }
+            ),
+        )
+        return OperationPage.model_validate(payload)
+
+    def get_operation(self, user_id: int, operation_id: int, operation_type: str) -> OperationDetail:
+        payload = self._execute(
+            "GET",
+            "api/finances/operation/load_data",
+            params=self._query(
+                {
+                    "userId": user_id,
+                    "id": operation_id,
+                    "type": operation_type,
+                }
+            ),
+        )
+        return OperationDetail.model_validate(payload)
+
     def create_document(self, user_id: int, document: dict[str, Any]) -> CreatedEntity:
         payload = self._execute(
             "POST",
@@ -117,6 +171,65 @@ class TaxerClient:
             json_body={"userId": user_id, "document": document},
         )
         return CreatedEntity.model_validate(payload)
+
+    def load_document_template_data(
+        self, user_id: int, document_id: int, document_type: str
+    ) -> dict[str, Any]:
+        payload = self._execute(
+            "GET",
+            "api/finances/document/load_template_data",
+            params=self._query(
+                {
+                    "userId": user_id,
+                    "documentId": document_id,
+                    "documentType": document_type,
+                }
+            ),
+        )
+        data = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(data, dict):
+            raise TaxerError("Taxer template data response has no data object")
+        return data
+
+    def load_print_template(self, template_id: int) -> dict[str, Any]:
+        payload = self._execute(
+            "GET",
+            "api2/finances/template/load_data",
+            params=self._query({"id": template_id}),
+        )
+        template = payload.get("template") if isinstance(payload, dict) else None
+        if not isinstance(template, dict):
+            raise TaxerError("Taxer template response has no template object")
+        return template
+
+    def create_converter_token(self, file_format: str = "pdf") -> str:
+        payload = self._execute(
+            "POST",
+            "api2/generator/file/converter_token",
+            params={"lang": self.lang},
+            json_body={"format": file_format},
+        )
+        token = payload.get("token") if isinstance(payload, dict) else None
+        if not isinstance(token, str) or not token:
+            raise TaxerError("Taxer converter token response has no token")
+        return token
+
+    def fetch_text(self, path: str) -> str:
+        try:
+            response = self._client.request(
+                "GET",
+                self._url(path),
+                headers={"Accept": "text/css, text/plain, */*"},
+            )
+            response.raise_for_status()
+        except httpx2.HTTPStatusError as exc:
+            raise TaxerError(
+                f"Taxer API {exc.response.status_code} for GET {path}",
+                status_code=exc.response.status_code,
+            ) from exc
+        except httpx2.HTTPError as exc:
+            raise TaxerError(f"Taxer API request failed for GET {path}: {exc}") from exc
+        return response.text
 
     def _query(self, params: dict[str, Any]) -> dict[str, str]:
         return {

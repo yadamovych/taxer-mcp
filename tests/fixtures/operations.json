@@ -1,0 +1,25 @@
+{
+  "paginator": {
+    "currentPage": 1,
+    "recordsOnPage": 15,
+    "totalPages": 1,
+    "totalRecords": 1
+  },
+  "operations": [
+    {
+      "id": 10,
+      "type": "FlowIncome",
+      "comment": "Оплата за рахунком",
+      "contents": [
+        {
+          "id": 1,
+          "timestamp": 1711929600,
+          "sumCurrency": 1000.0,
+          "accountTitle": "Монобанк",
+          "accountCurrency": "UAH"
+        }
+      ]
+    }
+  ],
+  "currencies": ["UAH"]
+}
