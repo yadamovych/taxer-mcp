@@ -27,7 +27,7 @@ def _load(name: str) -> dict:
 
 def _install(monkeypatch, handler):
     http = httpx2.Client(transport=httpx2.MockTransport(handler))
-    client = TaxerClient("XSRF-TOKEN=token", base_url="https://taxer.test", client=http)
+    client = TaxerClient("session_hash=token", base_url="https://taxer.test", client=http)
     monkeypatch.setattr("taxer_mcp.server.get_client", lambda: client)
     return client
 

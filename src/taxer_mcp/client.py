@@ -1,8 +1,8 @@
 """HTTP client for the Taxer.ua finance-document API.
 
-Taxer does not publish this API. Calls follow the session-cookie flow used by
-https://github.com/maxsivkov/py-taxer-api: send the browser cookie jar and the
-XSRF-TOKEN value as X-XSRF-TOKEN.
+Taxer does not publish this API. The current cabinet treats a logged-in browser
+as the ``session_hash`` cookie. ``XSRF-TOKEN`` is optional: older clients sent
+it, and this client forwards it when it is present.
 """
 
 from __future__ import annotations
@@ -50,12 +50,12 @@ class TaxerClient:
         client: httpx2.Client | None = None,
     ) -> None:
         self._cookies = parse_cookie_header(cookie)
+        if "session_hash" not in self._cookies:
+            raise TaxerError("TAXER_COOKIE must include session_hash")
         token = self._cookies.get("XSRF-TOKEN")
-        if not token:
-            raise TaxerError("TAXER_COOKIE must include XSRF-TOKEN")
         self.lang = lang
         self.base_url = base_url.rstrip("/")
-        self._token = unquote(token)
+        self._token = unquote(token) if token else None
         self._owns_client = client is None
         self._client = client or httpx2.Client(base_url=self.base_url, timeout=30.0)
         self._client.cookies.update(self._cookies)
@@ -153,13 +153,15 @@ class TaxerClient:
             raise TaxerError(f"Taxer API returned non-JSON for {method} {path}") from exc
 
     def _headers(self) -> dict[str, str]:
-        return {
+        headers = {
             "Accept": "application/json, text/plain, */*",
             "Content-Type": "application/json; charset=UTF-8",
             "Referer": f"{self.base_url}/{self.lang}/my/dashboard",
             "User-Agent": "taxer-mcp/0.1",
-            "X-XSRF-TOKEN": self._token,
         }
+        if self._token:
+            headers["X-XSRF-TOKEN"] = self._token
+        return headers
 
     def _url(self, path: str) -> str:
         return f"{self.base_url}/{path.lstrip('/')}"

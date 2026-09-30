@@ -54,7 +54,7 @@ Taxer has no API token. The login is the browser session cookie.
 5. In Request Headers, copy the whole `Cookie` value.
 6. Paste it into `.env` as `TAXER_COOKIE`.
 
-That value must include `XSRF-TOKEN` and the session cookie. `document.cookie` in the console often omits the session cookie, because browsers hide `HttpOnly` cookies from JavaScript. The Network header includes it.
+The current Taxer cabinet identifies a login with the `session_hash` cookie. There is no `XSRF-TOKEN` cookie to find. After you are logged in, `document.cookie` in the console includes `session_hash`, and so does the `Cookie` request header. Paste either value. If an `XSRF-TOKEN` cookie is also present, leave it in the string; the server forwards it.
 
 DevTools → Application → Cookies → `https://taxer.ua` shows when that session cookie expires. Taxer does not publish the lifetime. Log out, or sign in again, and the copied value stops working immediately. When tools return 401, repeat the steps above.
 

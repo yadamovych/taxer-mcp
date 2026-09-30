@@ -7,7 +7,7 @@ import pytest
 from taxer_mcp.client import TaxerClient, TaxerError
 
 FIXTURES = Path(__file__).parent / "fixtures"
-COOKIE = "XSRF-TOKEN=abc%3Dtoken; session=sess-1"
+COOKIE = "XSRF-TOKEN=abc%3Dtoken; session_hash=sess-1"
 
 
 def _load(name: str) -> dict:
@@ -20,9 +20,25 @@ def _client(handler) -> TaxerClient:
     return TaxerClient(COOKIE, base_url="https://taxer.test", lang="uk", client=http)
 
 
-def test_cookie_requires_xsrf_token():
-    with pytest.raises(TaxerError, match="XSRF-TOKEN"):
-        TaxerClient("session=only")
+def test_cookie_requires_session_hash():
+    with pytest.raises(TaxerError, match="session_hash"):
+        TaxerClient("XSRF-TOKEN=only")
+
+
+def test_session_hash_alone_does_not_send_xsrf_header():
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["request"] = request
+        return httpx2.Response(200, json=_load("account.json"))
+
+    transport = httpx2.MockTransport(handler)
+    http = httpx2.Client(transport=transport)
+    client = TaxerClient("session_hash=sess-1", base_url="https://taxer.test", client=http)
+    client.load_account()
+
+    assert "X-XSRF-TOKEN" not in seen["request"].headers
+    assert "session_hash=sess-1" in seen["request"].headers["Cookie"]
 
 
 def test_load_account_sends_xsrf_header_and_ignores_unknown_fields():
@@ -39,7 +55,7 @@ def test_load_account_sends_xsrf_header_and_ignores_unknown_fields():
     assert request.url.path == "/api/user/login/load_account"
     assert request.url.params["lang"] == "uk"
     assert request.headers["X-XSRF-TOKEN"] == "abc=token"
-    assert "session=sess-1" in request.headers["Cookie"]
+    assert "session_hash=sess-1" in request.headers["Cookie"]
     assert account.accountId == 217106
     assert account.users[0].id == 200664
     assert account.users[0].titleName == "ФОП Свиридов С. С."
