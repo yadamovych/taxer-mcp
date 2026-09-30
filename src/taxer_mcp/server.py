@@ -288,7 +288,9 @@ def export_document_pdf(
     invoice, or act. template_id is the saved print template to fill.
     Values come from load_template_data and the layout from that template.
     The PDF is written to output_path, or to a temporary file when
-    output_path is omitted. Returns the template title and the file path.
+    output_path is omitted. The filled template is then stored on the
+    document in Taxer. Returns the template title, the file path, and the
+    stored file id.
     """
     _require_document_type(document_type)
     destination = _pdf_destination(output_path, document_type, document_id)

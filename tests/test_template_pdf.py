@@ -112,6 +112,14 @@ def test_export_document_pdf_tool_writes_filled_template(monkeypatch, tmp_path):
         if request.url.path == "/api2/generator/file/converter_token":
             assert json.loads(request.content) == {"format": "pdf"}
             return httpx2.Response(200, json={"token": "tok"})
+        if request.url.path == "/api/finances/document/upload_file":
+            body = json.loads(request.content)
+            seen["upload"] = body
+            stored = base64.b64decode(body["file"]["content"]).decode()
+            assert stored.startswith("<body>")
+            assert "INV-1" in stored
+            assert "<style>" not in stored
+            return httpx2.Response(200, json={"id": 44})
         if request.url.path in {"/pdf-documents.css", "/pdf-finances-documents.css"}:
             return httpx2.Response(200, text="p{margin:0}")
         return httpx2.Response(404, text=request.url.path)
@@ -132,11 +140,21 @@ def test_export_document_pdf_tool_writes_filled_template(monkeypatch, tmp_path):
 
     assert result["templateTitle"] == "Invoice"
     assert result["templateType"] == "invoice_foreign"
+    assert result["generatedFileId"] == 44
     assert result["path"] == str(destination)
     assert destination.read_bytes() == b"%PDF-1.4"
     assert seen["token"] == "tok"
     assert "INV-1" in seen["html"]
     assert "Номер рахунку" not in seen["html"]
+    assert seen["paths"].index("/api2/generator/file/converter_token") < seen["paths"].index(
+        "/api/finances/document/upload_file"
+    )
+    upload = seen["upload"]
+    assert upload["generated"] is True
+    assert upload["userId"] == 200664
+    assert upload["documentId"] == 5
+    assert upload["documentType"] == "invoice"
+    assert upload["file"]["filename"] == "Invoice"
 
 
 def test_export_document_pdf_rejects_unknown_type():

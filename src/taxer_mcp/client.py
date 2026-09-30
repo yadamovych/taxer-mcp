@@ -2,14 +2,17 @@
 
 Taxer does not publish this API. Document and operation paths are the ones
 already called by py-taxer-api. Template PDF export uses the cabinet calls
-``load_template_data``, ``api2/finances/template/load_data``, and
-``api2/generator/file/converter_token``. Do not discover new paths by probing
-taxer.ua. ``XSRF-TOKEN`` is optional: older clients sent it, and this client
-forwards it when it is present.
+``load_template_data``, ``api2/finances/template/load_data``,
+``api2/generator/file/converter_token``, and ``upload_file`` (with
+``generated`` set, which is how the document editor stores the filled
+template). Do not discover new paths by probing taxer.ua. ``XSRF-TOKEN`` is
+optional: older clients sent it, and this client forwards it when it is
+present.
 """
 
 from __future__ import annotations
 
+import base64
 import json
 from typing import Any
 from urllib.parse import unquote
@@ -213,6 +216,35 @@ class TaxerClient:
         if not isinstance(token, str) or not token:
             raise TaxerError("Taxer converter token response has no token")
         return token
+
+    def upload_generated_file(
+        self,
+        user_id: int,
+        document_id: int,
+        document_type: str,
+        filename: str,
+        html: str,
+    ) -> int:
+        """Store the filled template on the document, as the editor's Save does."""
+        payload = self._execute(
+            "POST",
+            "api/finances/document/upload_file",
+            params={"lang": self.lang},
+            json_body={
+                "file": {
+                    "content": base64.b64encode(html.encode("utf-8")).decode("ascii"),
+                    "filename": filename,
+                },
+                "documentId": document_id,
+                "userId": user_id,
+                "documentType": document_type,
+                "generated": True,
+            },
+        )
+        file_id = payload.get("id") if isinstance(payload, dict) else None
+        if not isinstance(file_id, int):
+            raise TaxerError("Taxer upload_file response has no file id")
+        return file_id
 
     def fetch_text(self, path: str) -> str:
         try:

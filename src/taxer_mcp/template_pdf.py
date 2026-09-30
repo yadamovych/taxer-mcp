@@ -54,6 +54,13 @@ def build_document_html(body: str, css: str) -> str:
     )
 
 
+def editor_html(filled: str) -> str:
+    """Filled template as the document editor stores it: a body element."""
+    if filled.strip().lower().startswith("<body"):
+        return filled
+    return f"<body>{filled}</body>"
+
+
 def convert_html_to_pdf(html: str, token: str, converter_url: str) -> bytes:
     """POST filled HTML to Taxer's PDF converter. Do not send the session cookie."""
     response = httpx2.post(
@@ -83,20 +90,35 @@ def export_document_pdf(
     template_id: int,
     converter_url: str = DEFAULT_PDF_CONVERTER_URL,
 ) -> tuple[bytes, dict[str, Any]]:
-    """Load one document's template values and one print layout, then render a PDF."""
+    """Load one document's template values and one print layout, then render a PDF.
+
+    After the PDF is built, the filled template is stored on the document with
+    upload_file and generated set, which is the cabinet editor's Save call.
+    """
     fields = client.load_document_template_data(user_id, document_id, document_type)
     template = client.load_print_template(template_id)
     body = template.get("data")
     if not isinstance(body, str) or not body:
         raise TaxerError(f"Taxer template {template_id} has no HTML layout")
+    filled = fill_template(body, fields)
     css = _stylesheets(client)
-    html = build_document_html(fill_template(body, fields), css)
+    html = build_document_html(filled, css)
     token = client.create_converter_token("pdf")
     pdf = convert_html_to_pdf(html, token, converter_url)
+    title = template.get("title")
+    filename = title if isinstance(title, str) and title else document_type
+    file_id = client.upload_generated_file(
+        user_id,
+        document_id,
+        document_type,
+        filename,
+        editor_html(filled),
+    )
     info = {
         "templateId": template.get("id", template_id),
-        "templateTitle": template.get("title"),
+        "templateTitle": title,
         "templateType": template.get("type"),
+        "generatedFileId": file_id,
     }
     return pdf, info
 
