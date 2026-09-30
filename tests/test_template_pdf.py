@@ -21,7 +21,7 @@ def test_fill_template_replaces_labels_and_repeats_line_rows():
     filled = fill_template(
         LAYOUT,
         {
-            "invoiceNum": "TEST2",
+            "invoiceNum": "INV-1",
             "nomenclatureNumber": [1, 2],
             "contentTfNomenclature": ["Computer programming services", "Support"],
         },
@@ -29,7 +29,7 @@ def test_fill_template_replaces_labels_and_repeats_line_rows():
 
     assert "Номер рахунку" not in filled
     assert "Line description" not in filled
-    assert filled.count("TEST2") == 1
+    assert filled.count("INV-1") == 1
     assert filled.count("<tr>") == 3
     assert "Computer programming services" in filled
     assert "Support" in filled
@@ -38,10 +38,10 @@ def test_fill_template_replaces_labels_and_repeats_line_rows():
 
 
 def test_fill_template_leaves_static_text():
-    html = '<p>Ferdinand Davertzhofen</p><span data-name="contractorName">Ім’я замовника</span>'
-    filled = fill_template(html, {"contractorName": "zeb.information.technology gmbh & co.kg"})
-    assert "Ferdinand Davertzhofen" in filled
-    assert "zeb.information.technology gmbh &amp; co.kg" in filled
+    html = '<p>Static contact</p><span data-name="contractorName">Customer name</span>'
+    filled = fill_template(html, {"contractorName": "Example customer"})
+    assert "Static contact" in filled
+    assert "Example customer" in filled
 
 
 def test_convert_html_decodes_base64_pdf():
@@ -95,7 +95,7 @@ def test_export_document_pdf_tool_writes_filled_template(monkeypatch, tmp_path):
                 "documentId": 5,
                 "documentType": "invoice",
             }
-            return httpx2.Response(200, json={"data": {"invoiceNum": "TEST2", "nomenclatureNumber": [1]}})
+            return httpx2.Response(200, json={"data": {"invoiceNum": "INV-1", "nomenclatureNumber": [1]}})
         if request.url.path == "/api2/finances/template/load_data":
             assert json.loads(request.url.params["params"]) == {"id": 7}
             return httpx2.Response(
@@ -135,7 +135,7 @@ def test_export_document_pdf_tool_writes_filled_template(monkeypatch, tmp_path):
     assert result["path"] == str(destination)
     assert destination.read_bytes() == b"%PDF-1.4"
     assert seen["token"] == "tok"
-    assert "TEST2" in seen["html"]
+    assert "INV-1" in seen["html"]
     assert "Номер рахунку" not in seen["html"]
 
 
