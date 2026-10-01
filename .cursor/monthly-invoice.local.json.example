@@ -1,0 +1,25 @@
+{
+  "taxer": {
+    "user_id": 0,
+    "contractor_id": 0,
+    "parent_id": 0,
+    "parent_type": "contract",
+    "account_id": 0,
+    "currency": "EUR",
+    "nds": -1,
+    "is_foreign": 1,
+    "template_id": 0,
+    "line": {
+      "title": "Service description",
+      "measure": "unit",
+      "quantity": 1,
+      "price": 0
+    }
+  },
+  "gmail": {
+    "to": ["billing@client.example"],
+    "cc": [],
+    "sign_off": "Your Name"
+  },
+  "pdf_filename_pattern": "YYYY_MM_DD_{number}_INVOICE.pdf"
+}
