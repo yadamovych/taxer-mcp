@@ -7,4 +7,3 @@ __pycache__/
 dist/
 *.egg-info/
 .env
-.cursor/monthly-invoice.local.json
