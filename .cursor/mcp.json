@@ -5,6 +5,12 @@
       "command": "uv",
       "args": ["--directory", "${workspaceFolder}", "run", "taxer-mcp"],
       "envFile": "${workspaceFolder}/.env"
+    },
+    "gmail": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "gmail-mcp-server@1.0.30"],
+      "envFile": "${workspaceFolder}/.env"
     }
   }
 }

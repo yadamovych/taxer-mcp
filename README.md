@@ -43,7 +43,9 @@ TAXER_COOKIE="paste the Cookie header here"
 
 Keep the double quotes. The cookie contains semicolons. `TAXER_BASE_URL` and `TAXER_LANG` override the defaults `https://taxer.ua` and `uk`.
 
-Reload the window, then enable **taxer** under Customize. Cursor asks before each tool call. Output → MCP Logs shows startup errors. If `uv` is missing from that log, install it or put its full path in `command`.
+Reload the window, then enable **taxer** (and optionally **gmail**) under Customize. Cursor asks before each tool call. Output → MCP Logs shows startup errors. If `uv` is missing from that log, install it or put its full path in `command`.
+
+The **gmail** server runs [gmail-mcp-server](https://www.npmjs.com/package/gmail-mcp-server) via `npx` (Node.js required). Set `GMAIL_CLIENT_ID` and `GMAIL_CLIENT_SECRET` in `.env` from a Google Cloud OAuth **Desktop** client with Gmail API enabled. On first use, run the MCP tool `gmail_authenticate` and finish the browser login; tokens are stored under `~/.gmail-mcp/`.
 
 Ask Cursor to list your Taxer profiles. A 401 means the cookie is incomplete or expired: copy a fresh `Cookie` header and reload MCP.
 
