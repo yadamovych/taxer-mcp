@@ -43,9 +43,9 @@ TAXER_COOKIE="paste the Cookie header here"
 
 Keep the double quotes. The cookie contains semicolons. `TAXER_BASE_URL` and `TAXER_LANG` override the defaults `https://taxer.ua` and `uk`.
 
-Reload the window, then enable **taxer** (and optionally **gmail**) under Customize. Cursor asks before each tool call. Output → MCP Logs shows startup errors. If `uv` is missing from that log, install it or put its full path in `command`.
+Reload the window, then enable **taxer** and **gmail** under Customize. Cursor asks before each tool call. Output → MCP Logs shows startup errors. If `uv` is missing from that log, install it or put its full path in `command`.
 
-The **gmail** server runs [gmail-mcp-server](https://www.npmjs.com/package/gmail-mcp-server) via `npx` (Node.js required). Set `GMAIL_CLIENT_ID` and `GMAIL_CLIENT_SECRET` in `.env` from a Google Cloud OAuth **Desktop** client with Gmail API enabled. On first use, run the MCP tool `gmail_authenticate` and finish the browser login; tokens are stored under `~/.gmail-mcp/`.
+**gmail** is Google's remote MCP server ([setup guide](https://developers.google.com/workspace/gmail/api/guides/configure-mcp-server#configure-mcp-client)): streamable HTTP at `https://gmailmcp.googleapis.com/mcp/v1`, authenticated with Google OAuth. Cursor prompts for sign-in when the server connects. Enable the Gmail API and Gmail MCP API on the Google Cloud project, and register Cursor's OAuth redirect URIs (`https://www.cursor.com/agents/mcp/oauth/callback` and `http://localhost:8787/callback`) on a Web application client if Google asks for a fixed client.
 
 Ask Cursor to list your Taxer profiles. A 401 means the cookie is incomplete or expired: copy a fresh `Cookie` header and reload MCP.
 

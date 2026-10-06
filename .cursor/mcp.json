@@ -7,10 +7,8 @@
       "envFile": "${workspaceFolder}/.env"
     },
     "gmail": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "gmail-mcp-server@1.0.30"],
-      "envFile": "${workspaceFolder}/.env"
+      "type": "http",
+      "url": "https://gmailmcp.googleapis.com/mcp/v1"
     }
   }
 }
