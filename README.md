@@ -108,7 +108,7 @@ DevTools → **Application** → **Cookies** → `https://taxer.ua` shows when t
 
 ## Monthly invoice automation
 
-Cloud agents that create the ZEB invoice and Gmail draft should read [AGENTS.md](AGENTS.md). Helper scripts live under `scripts/` (`create_gmail_draft_with_attachment.py`, `validate_invoice_pdf.py`). Install PDF validation deps with `uv sync --group automation`.
+Cloud agents should read [AGENTS.md](AGENTS.md) for generic MCP and script usage. Keep client-specific automation parameters in your private Cursor automation template or in `AGENTS.local.md` (see [AGENTS.local.example.md](AGENTS.local.example.md); that file is gitignored). Helper scripts: `scripts/create_gmail_draft_with_attachment.py`, `scripts/validate_invoice_pdf.py`. Install PDF validation deps with `uv sync --group automation`.
 
 ## Tests
 
