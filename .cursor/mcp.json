@@ -7,10 +7,15 @@
       "envFile": "${workspaceFolder}/.env"
     },
     "gmail": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "gmail-mcp-server@1.0.30"],
-      "envFile": "${workspaceFolder}/.env"
+      "url": "https://gmailmcp.googleapis.com/mcp/v1",
+      "auth": {
+        "CLIENT_ID": "${env:GMAIL_CLIENT_ID}",
+        "CLIENT_SECRET": "${env:GMAIL_CLIENT_SECRET}",
+        "scopes": [
+          "https://www.googleapis.com/auth/gmail.readonly",
+          "https://www.googleapis.com/auth/gmail.compose"
+        ]
+      }
     }
   }
 }
