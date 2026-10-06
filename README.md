@@ -31,7 +31,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/) on the `PATH` Cursor 
 uv sync
 ```
 
-[`.cursor/mcp.json`](.cursor/mcp.json) starts this server over stdio and loads [`.env`](.env.example). `.env` is gitignored. Copy the example and paste your cookie:
+Configure MCP in your user config ([`~/.cursor/mcp.json`](https://cursor.com/docs/context/mcp), or `%USERPROFILE%\.cursor\mcp.json` on Windows). For a local clone, point `command`/`args` at this repo and set `envFile` to [`.env`](.env.example). `.env` is gitignored. Copy the example and paste your cookie:
 
 ```bash
 cp .env.example .env
@@ -47,7 +47,7 @@ Reload the window, then enable **taxer** (and optionally **gmail-mcp**) under Cu
 
 The **gmail-mcp** server is Google’s remote MCP ([configure guide](https://developers.google.com/workspace/gmail/api/guides/configure-mcp-server#configure-mcp-client)): Streamable HTTP at `https://gmailmcp.googleapis.com/mcp/v1`. You need Gmail API and **Gmail MCP API** enabled on your Cloud project (Developer Preview). Create an OAuth **Web application** client; add Cursor redirect URIs `http://localhost:8787/callback` and `https://www.cursor.com/agents/mcp/oauth/callback` ([Cursor MCP OAuth](https://cursor.com/docs/context/mcp#static-oauth-for-remote-servers)). Add scopes `gmail.readonly` and `gmail.compose` on the consent screen as in Google’s doc.
 
-Put `GMAIL_CLIENT_ID` and `GMAIL_CLIENT_SECRET` in `.env`, then **export** them (or use [direnv](https://direnv.net/)) before launching Cursor — the remote server uses `${env:GMAIL_*}` in [`.cursor/mcp.json`](.cursor/mcp.json), not `envFile`. Enable **gmail-mcp** under Customize and complete Cursor’s OAuth flow when prompted. Tools include `create_draft`, `search_threads`, and `list_drafts` (not the npm `gmail-mcp-server` tool names).
+Optional **gmail-mcp** in the same `mcp.json`: set `GMAIL_CLIENT_ID` and `GMAIL_CLIENT_SECRET` in `.env`, then **export** them (or use [direnv](https://direnv.net/)) before launching Cursor — the remote server uses `${env:GMAIL_*}` in `auth`, not `envFile`. Enable **gmail-mcp** under Customize and complete Cursor’s OAuth flow when prompted. Tools include `create_draft`, `search_threads`, and `list_drafts`.
 
 Ask Cursor to list your Taxer profiles. A 401 means the cookie is incomplete or expired: copy a fresh `Cookie` header and reload MCP.
 
