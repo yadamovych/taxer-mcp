@@ -22,8 +22,9 @@ DEFAULT_PDF_CONVERTER_URL = (
 )
 DOCUMENT_STYLESHEETS = ("/pdf-documents.css", "/pdf-finances-documents.css")
 
+# Taxer's editor writes the closing tag as ``</span`` newline ``>``.
 _MERGE_TAG = re.compile(
-    r"<(span|strong|b)\b([^>]*\bdata-name=\"([^\"]+)\"[^>]*)>([^<]*)</\1>",
+    r"<(span|strong|b)\b([^>]*\bdata-name=\"([^\"]+)\"[^>]*)>([^<]*)</\1\s*>",
     re.IGNORECASE,
 )
 _TABLE_ROW = re.compile(r"<tr\b[^>]*>.*?</tr>", re.IGNORECASE | re.DOTALL)

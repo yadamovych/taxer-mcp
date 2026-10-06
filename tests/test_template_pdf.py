@@ -37,6 +37,17 @@ def test_fill_template_replaces_labels_and_repeats_line_rows():
     assert ">2<" in filled
 
 
+def test_fill_template_matches_taxer_closing_tags_split_before_gt():
+    html = """<span
+        data-name="invoiceNum"
+        data-display-name="Номер рахунку"
+        >Номер рахунку</span
+      >"""
+    filled = fill_template(html, {"invoiceNum": "3"})
+    assert ">3</span>" in filled
+    assert ">Номер рахунку</span>" not in filled
+
+
 def test_fill_template_leaves_static_text():
     html = '<p>Static contact</p><span data-name="contractorName">Customer name</span>'
     filled = fill_template(html, {"contractorName": "Example customer"})
