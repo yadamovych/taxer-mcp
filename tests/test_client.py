@@ -214,3 +214,18 @@ def test_http_error_becomes_taxer_error():
     with pytest.raises(TaxerError, match="401") as caught:
         _client(handler).load_account()
     assert caught.value.status_code == 401
+
+
+def test_transient_transport_error_is_retried(monkeypatch):
+    calls = {"n": 0}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise httpx2.ReadError("UNEXPECTED_EOF_WHILE_READING")
+        return httpx2.Response(200, json=_load("account.json"))
+
+    monkeypatch.setattr("taxer_mcp.client.time.sleep", lambda _sec: None)
+    account = _client(handler).load_account()
+    assert account.accountId == 217106
+    assert calls["n"] == 3

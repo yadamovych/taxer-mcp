@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import base64
 import json
+import time
 from typing import Any
 from urllib.parse import unquote
 
@@ -32,6 +33,14 @@ from taxer_mcp.models import (
 DEFAULT_BASE_URL = "https://taxer.ua"
 # Public build id from the Taxer web app. Requests without it are not treated as the cabinet.
 REVISION = "app:Y45z63lutzk5p0XR"
+_TAXER_HTTP_ATTEMPTS = 3
+_TAXER_RETRY_BACKOFF_SEC = (0.75, 2.0)
+
+
+def _transient_taxer_http_error(exc: httpx2.HTTPError) -> bool:
+    if isinstance(exc, httpx2.HTTPStatusError):
+        return exc.response.status_code in (502, 503, 504)
+    return isinstance(exc, (httpx2.TransportError, httpx2.TimeoutException))
 
 
 class TaxerError(Exception):
@@ -247,20 +256,11 @@ class TaxerClient:
         return file_id
 
     def fetch_text(self, path: str) -> str:
-        try:
-            response = self._client.request(
-                "GET",
-                self._url(path),
-                headers={"Accept": "text/css, text/plain, */*"},
-            )
-            response.raise_for_status()
-        except httpx2.HTTPStatusError as exc:
-            raise TaxerError(
-                f"Taxer API {exc.response.status_code} for GET {path}",
-                status_code=exc.response.status_code,
-            ) from exc
-        except httpx2.HTTPError as exc:
-            raise TaxerError(f"Taxer API request failed for GET {path}: {exc}") from exc
+        response = self._request(
+            "GET",
+            path,
+            headers={"Accept": "text/css, text/plain, */*"},
+        )
         return response.text
 
     def _query(self, params: dict[str, Any]) -> dict[str, str]:
@@ -268,6 +268,45 @@ class TaxerClient:
             "lang": self.lang,
             "params": json.dumps(params, ensure_ascii=False, separators=(",", ":")),
         }
+
+    def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        json_body: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> httpx2.Response:
+        last_exc: httpx2.HTTPError | None = None
+        for attempt in range(_TAXER_HTTP_ATTEMPTS):
+            try:
+                response = self._client.request(
+                    method,
+                    self._url(path),
+                    params=params,
+                    json=json_body,
+                    headers=headers if headers is not None else self._headers(),
+                )
+                response.raise_for_status()
+                return response
+            except httpx2.HTTPStatusError as exc:
+                if _transient_taxer_http_error(exc) and attempt + 1 < _TAXER_HTTP_ATTEMPTS:
+                    last_exc = exc
+                    time.sleep(_TAXER_RETRY_BACKOFF_SEC[min(attempt, len(_TAXER_RETRY_BACKOFF_SEC) - 1)])
+                    continue
+                raise TaxerError(
+                    f"Taxer API {exc.response.status_code} for {method} {path}: {exc.response.text}",
+                    status_code=exc.response.status_code,
+                ) from exc
+            except httpx2.HTTPError as exc:
+                if _transient_taxer_http_error(exc) and attempt + 1 < _TAXER_HTTP_ATTEMPTS:
+                    last_exc = exc
+                    time.sleep(_TAXER_RETRY_BACKOFF_SEC[min(attempt, len(_TAXER_RETRY_BACKOFF_SEC) - 1)])
+                    continue
+                raise TaxerError(f"Taxer API request failed for {method} {path}: {exc}") from exc
+        assert last_exc is not None
+        raise TaxerError(f"Taxer API request failed for {method} {path}: {last_exc}") from last_exc
 
     def _execute(
         self,
@@ -277,23 +316,7 @@ class TaxerClient:
         params: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
     ) -> Any:
-        try:
-            response = self._client.request(
-                method,
-                self._url(path),
-                params=params,
-                json=json_body,
-                headers=self._headers(),
-            )
-            response.raise_for_status()
-        except httpx2.HTTPStatusError as exc:
-            raise TaxerError(
-                f"Taxer API {exc.response.status_code} for {method} {path}: {exc.response.text}",
-                status_code=exc.response.status_code,
-            ) from exc
-        except httpx2.HTTPError as exc:
-            raise TaxerError(f"Taxer API request failed for {method} {path}: {exc}") from exc
-
+        response = self._request(method, path, params=params, json_body=json_body)
         try:
             return response.json()
         except ValueError as exc:
