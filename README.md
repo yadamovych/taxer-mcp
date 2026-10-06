@@ -106,6 +106,10 @@ TAXER_COOKIE="PHPSESSID=...; session_key=...; session_hash=...; session_key_hash
 
 DevTools → **Application** → **Cookies** → `https://taxer.ua` shows when those cookies expire. Taxer does not publish the lifetime. Log out, or sign in again, and the copied value stops working immediately. When tools return 401, copy a fresh `Cookie` header and reload MCP.
 
+## Monthly invoice automation
+
+Cloud agents that create the ZEB invoice and Gmail draft should read [AGENTS.md](AGENTS.md). Helper scripts live under `scripts/` (`create_gmail_draft_with_attachment.py`, `validate_invoice_pdf.py`). Install PDF validation deps with `uv sync --group automation`.
+
 ## Tests
 
 ```bash
