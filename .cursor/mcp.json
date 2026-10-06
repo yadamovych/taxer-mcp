@@ -6,7 +6,7 @@
       "args": ["--directory", "${workspaceFolder}", "run", "taxer-mcp"],
       "envFile": "${workspaceFolder}/.env"
     },
-    "gmail": {
+    "gmail-mcp": {
       "url": "https://gmailmcp.googleapis.com/mcp/v1",
       "auth": {
         "CLIENT_ID": "${env:GMAIL_CLIENT_ID}",
