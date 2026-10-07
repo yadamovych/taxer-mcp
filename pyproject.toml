@@ -1,0 +1,26 @@
+[project]
+name = "taxer-mcp"
+version = "0.1.0"
+description = "MCP server for Taxer.ua finance documents"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=2,<3",
+    "httpx2>=2.5",
+    "pydantic>=2.12",
+]
+
+[project.scripts]
+taxer-mcp = "taxer_mcp.server:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
