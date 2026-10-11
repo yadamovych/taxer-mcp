@@ -275,6 +275,22 @@ def create_act(
 
 
 @mcp.tool()
+def list_print_templates() -> dict[str, Any]:
+    """List Taxer print templates, including each template's name.
+
+    templates is the page of layouts. Each item has id, title, and type.
+    title is the name shown in the cabinet. isDefault is true for the
+    template Taxer selects by default. isPublic is true for a standard
+    Taxer template. Pass id to export_document_pdf as template_id.
+    """
+
+    def run(client: TaxerClient) -> dict[str, Any]:
+        return dump_model(client.list_print_templates())
+
+    return _call(run)
+
+
+@mcp.tool()
 def export_document_pdf(
     user_id: int,
     document_id: int,

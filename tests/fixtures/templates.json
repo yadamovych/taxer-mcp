@@ -1,0 +1,26 @@
+{
+  "paginator": {
+    "currentPage": 1,
+    "recordsOnPage": 15,
+    "totalPages": 1,
+    "totalRecords": 2
+  },
+  "data": [
+    {
+      "id": 8,
+      "title": "Invoice (standard template)",
+      "type": "invoice_foreign",
+      "isDefault": false,
+      "timestamp": null,
+      "isPublic": true
+    },
+    {
+      "id": 9,
+      "title": "Invoice",
+      "type": "invoice",
+      "isDefault": true,
+      "timestamp": 1711929600,
+      "isPublic": false
+    }
+  ]
+}

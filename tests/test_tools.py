@@ -18,6 +18,7 @@ from taxer_mcp.server import (
     list_accounts,
     list_documents,
     list_operations,
+    list_print_templates,
     list_profiles,
     mcp,
 )
@@ -46,6 +47,7 @@ def test_server_registers_document_tools():
         "list_accounts",
         "list_operations",
         "get_operation",
+        "list_print_templates",
         "export_document_pdf",
         "create_contract",
         "create_invoice",
@@ -62,6 +64,18 @@ def test_list_profiles_tool(monkeypatch):
     assert result["accountId"] == 217106
     assert result["users"][0]["id"] == 200664
     assert "unknownExtra" not in result
+
+
+def test_list_print_templates_tool_returns_titles(monkeypatch):
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json=_load("templates.json"))
+
+    _install(monkeypatch, handler)
+    result = list_print_templates()
+    assert result["templates"][0]["title"] == "Invoice (standard template)"
+    assert result["templates"][1]["title"] == "Invoice"
+    assert result["templates"][1]["id"] == 9
+    assert "data" not in result
 
 
 def test_list_documents_rejects_page_zero():

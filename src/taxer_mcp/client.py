@@ -2,7 +2,8 @@
 
 Taxer does not publish this API. Document and operation paths are the ones
 already called by py-taxer-api. Template PDF export uses the cabinet calls
-``load_template_data``, ``api2/finances/template/load_data``,
+``load_template_data``, ``api2/finances/template/load``,
+``api2/finances/template/load_data``,
 ``api2/generator/file/converter_token``, and ``upload_file`` (with
 ``generated`` set, which is how the document editor stores the filled
 template). Do not discover new paths by probing taxer.ua. ``XSRF-TOKEN`` is
@@ -28,6 +29,7 @@ from taxer_mcp.models import (
     MoneyAccountPage,
     OperationDetail,
     OperationPage,
+    PrintTemplatePage,
 )
 
 DEFAULT_BASE_URL = "https://taxer.ua"
@@ -202,6 +204,14 @@ class TaxerClient:
         if not isinstance(data, dict):
             raise TaxerError("Taxer template data response has no data object")
         return data
+
+    def list_print_templates(self) -> PrintTemplatePage:
+        payload = self._execute(
+            "GET",
+            "api2/finances/template/load",
+            params=self._query({}),
+        )
+        return PrintTemplatePage.model_validate(payload)
 
     def load_print_template(self, template_id: int) -> dict[str, Any]:
         payload = self._execute(

@@ -204,6 +204,20 @@ class MoneyAccountPage(TaxerModel):
     accountsCurrencies: list[str] | None = None
 
 
+class PrintTemplate(TaxerModel):
+    id: int | None = None
+    title: str | None = None
+    type: str | None = None
+    isDefault: bool | None = None
+    isPublic: bool | None = None
+    timestamp: int | None = None
+
+
+class PrintTemplatePage(TaxerModel):
+    paginator: Paginator | None = None
+    templates: list[PrintTemplate] = Field(default_factory=list, validation_alias="data")
+
+
 class CreatedEntity(TaxerModel):
     id: int
 

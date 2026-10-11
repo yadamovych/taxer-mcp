@@ -141,6 +141,30 @@ def test_create_document_posts_payload_and_returns_id():
     assert created.id == 91
 
 
+def test_list_print_templates_sends_empty_params_and_keeps_titles():
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["request"] = request
+        return httpx2.Response(200, json=_load("templates.json"))
+
+    page = _client(handler).list_print_templates()
+
+    request = seen["request"]
+    assert request.method == "GET"
+    assert request.url.path == "/api2/finances/template/load"
+    assert json.loads(request.url.params["params"]) == {}
+    assert request.url.params["lang"] == "uk"
+    assert page.paginator is not None
+    assert page.paginator.totalRecords == 2
+    assert page.templates[0].id == 8
+    assert page.templates[0].title == "Invoice (standard template)"
+    assert page.templates[0].type == "invoice_foreign"
+    assert page.templates[0].isPublic is True
+    assert page.templates[1].title == "Invoice"
+    assert page.templates[1].isDefault is True
+
+
 def test_list_accounts_sends_paged_params_query():
     seen = {}
 

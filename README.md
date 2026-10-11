@@ -17,6 +17,7 @@ Taxer does not publish a public API. This server calls the same internal endpoin
 | `list_accounts` | One page of money accounts (bank and cash) for a profile. |
 | `list_operations` | One page of bank operations for a profile. |
 | `get_operation` | One operation: Withdrawal, FlowOutgo, FlowIncome, CurrencyExchange, or AutoExchange. |
+| `list_print_templates` | Print templates on the account. Each item includes `id`, `title` (the cabinet name), `type`, `isDefault`, and `isPublic`. |
 | `export_document_pdf` | Fill a saved print template, write a PDF, and store that filled template on the document. Document and template id are inputs. |
 
 Create tools return the new document id. They do not upload files. Account and operation tools are read-only. `export_document_pdf` loads `load_template_data` and `api2/finances/template/load_data`, fills the template's merge fields, and sends the HTML to Taxer's PDF converter. The session cookie is not sent to the converter. It then stores the filled template on the document with `upload_file` and `generated` set, the same call the cabinet uses when you save from the document editor. Update, delete, and other document types (waybill, receipt, bill) are not in this version. Do not probe taxer.ua for new endpoints.
