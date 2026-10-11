@@ -6,7 +6,7 @@ import pytest
 
 from taxer_mcp.client import TaxerClient, TaxerError
 from taxer_mcp.server import ToolError, export_document_pdf
-from taxer_mcp.template_pdf import convert_html_to_pdf, fill_template
+from taxer_mcp.template_pdf import convert_html_to_pdf, fill_template, merge_fields_html
 
 LAYOUT = """
 <p><span data-name="invoiceNum" data-decorator-type="mergefield">Номер рахунку</span></p>
@@ -15,6 +15,27 @@ LAYOUT = """
 <td><strong data-name="contentTfNomenclature" data-decorator-type="mergefield">Line description</strong></td>
 </tr></table>
 """
+
+
+def test_merge_fields_html_marks_variables_and_groups_line_items():
+    html = merge_fields_html(
+        [
+            ("contractorName", "Customer", False),
+            ("contentQuantity", "Quantity", True),
+            ("contentTfPrice", "Price", True),
+        ]
+    )
+    assert 'data-name="contractorName"' in html
+    assert 'data-decorator-type="mergefield"' in html
+    assert html.count("<tr>") == 1
+    assert 'data-multiple="true"' in html
+    filled = fill_template(
+        html,
+        {"contractorName": "Example customer", "contentQuantity": [1, 2], "contentTfPrice": ["5.00", "6.00"]},
+    )
+    assert "Example customer" in filled
+    assert ">1<" in filled
+    assert ">2<" in filled
 
 
 def test_fill_template_replaces_labels_and_repeats_line_rows():

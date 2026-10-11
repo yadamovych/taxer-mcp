@@ -8,6 +8,22 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 DOCUMENT_TYPES = ("contract", "invoice", "act")
+# Types the Taxer template editor offers when you add a print template.
+PRINT_TEMPLATE_TYPES = (
+    "contract",
+    "act_foreign",
+    "act_product",
+    "act_service",
+    "act_product_nds",
+    "act_service_nds",
+    "waybill",
+    "waybill_nds",
+    "check",
+    "check_nds",
+    "invoice",
+    "invoice_foreign",
+    "invoice_nds",
+)
 # Types py-taxer-api already sends to api/finances/operation/load_data.
 OPERATION_TYPES = ("Withdrawal", "FlowOutgo", "FlowIncome", "CurrencyExchange", "AutoExchange")
 
@@ -220,6 +236,19 @@ class PrintTemplatePage(TaxerModel):
 
 class CreatedEntity(TaxerModel):
     id: int
+
+
+class MergeField(BaseModel):
+    """One Taxer print-template variable.
+
+    name is the data-name key filled from the document, customer, or bank
+    account. display_name is the label stored on the field. multiple is true
+    for a line-item column such as quantity or price.
+    """
+
+    name: str
+    display_name: str
+    multiple: bool = False
 
 
 class ActLine(BaseModel):

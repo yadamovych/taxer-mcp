@@ -12,7 +12,15 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from taxer_mcp import template_pdf
 from taxer_mcp.client import TaxerClient, TaxerError
-from taxer_mcp.models import DOCUMENT_TYPES, OPERATION_TYPES, ActLine, build_document, dump_model
+from taxer_mcp.models import (
+    DOCUMENT_TYPES,
+    OPERATION_TYPES,
+    PRINT_TEMPLATE_TYPES,
+    ActLine,
+    MergeField,
+    build_document,
+    dump_model,
+)
 
 mcp = MCPServer("taxer")
 
@@ -291,6 +299,40 @@ def list_print_templates() -> dict[str, Any]:
 
 
 @mcp.tool()
+def create_print_template(
+    title: str,
+    template_type: str,
+    html: str | None = None,
+    fields: list[MergeField] | None = None,
+    copy_public: bool = False,
+) -> dict[str, int]:
+    """Create a Taxer print template and return its id.
+
+    template_type is one of contract, act_foreign, act_product, act_service,
+    act_product_nds, act_service_nds, waybill, waybill_nds, check, check_nds,
+    invoice, invoice_foreign, or invoice_nds. html is the layout. fields are
+    variables filled later from the document, customer, or bank account: name
+    is the variable key, display_name is its label, and multiple marks a
+    line-item column. copy_public starts from Taxer's predefined layout for
+    that type when html is omitted. The id is template_id for
+    export_document_pdf. This stores a template on the account.
+    """
+    _require_print_template_type(template_type)
+    if not title.strip():
+        raise ToolError("title is empty")
+    parsed_fields = _parse_merge_fields(fields)
+    if html is None and not parsed_fields and not copy_public:
+        raise ToolError("A template needs html, fields, or copy_public")
+
+    def run(client: TaxerClient) -> dict[str, int]:
+        layout = _template_html(client, template_type, html, parsed_fields, copy_public)
+        created = client.create_print_template(title.strip(), template_type, layout)
+        return {"id": created.id}
+
+    return _call(run)
+
+
+@mcp.tool()
 def export_document_pdf(
     user_id: int,
     document_id: int,
@@ -357,6 +399,46 @@ def _create(doc_type: str, **fields: Any) -> dict[str, int]:
         return {"id": created.id}
 
     return _call(run)
+
+
+def _template_html(
+    client: TaxerClient,
+    template_type: str,
+    html: str | None,
+    fields: list[MergeField] | None,
+    copy_public: bool,
+) -> str:
+    if html is not None:
+        layout = html
+    elif copy_public:
+        public = client.load_public_print_template(template_type)
+        data = public.get("data")
+        if not isinstance(data, str):
+            raise ToolError(f"Taxer has no public layout for {template_type}")
+        layout = data
+    else:
+        layout = ""
+    if fields:
+        layout += template_pdf.merge_fields_html(
+            [(field.name, field.display_name, field.multiple) for field in fields]
+        )
+    if not layout.strip():
+        raise ToolError("A template needs html, fields, or copy_public")
+    return layout
+
+
+def _parse_merge_fields(fields: list[MergeField] | None) -> list[MergeField] | None:
+    if fields is None:
+        return None
+    if not fields:
+        raise ToolError("fields is empty")
+    return [MergeField.model_validate(field) for field in fields]
+
+
+def _require_print_template_type(template_type: str) -> None:
+    if template_type not in PRINT_TEMPLATE_TYPES:
+        allowed = ", ".join(PRINT_TEMPLATE_TYPES)
+        raise ToolError(f"template_type must be one of {allowed}")
 
 
 def _require_document_type(document_type: str) -> None:

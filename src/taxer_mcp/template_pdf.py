@@ -31,6 +31,31 @@ _TABLE_ROW = re.compile(r"<tr\b[^>]*>.*?</tr>", re.IGNORECASE | re.DOTALL)
 _FIELD_NAME = re.compile(r'data-name="([^"]+)"')
 
 
+def merge_field_html(name: str, display_name: str, *, multiple: bool = False) -> str:
+    """One Taxer merge-field element. name is the variable key."""
+    label = escape(display_name, quote=True)
+    field = escape(name, quote=True)
+    repeated = ' data-multiple="true"' if multiple else ""
+    return (
+        f'<span data-name="{field}" data-display-name="{label}" '
+        f'data-decorator-type="mergefield"{repeated}>{label}</span>'
+    )
+
+
+def merge_fields_html(fields: list[tuple[str, str, bool]]) -> str:
+    """Layout HTML for variables. Repeating fields share one table row."""
+    parts: list[str] = []
+    singles = [(name, label) for name, label, multiple in fields if not multiple]
+    repeated = [(name, label) for name, label, multiple in fields if multiple]
+    parts.extend(f"<p>{merge_field_html(name, label)}</p>" for name, label in singles)
+    if repeated:
+        cells = "".join(
+            f"<td>{merge_field_html(name, label, multiple=True)}</td>" for name, label in repeated
+        )
+        parts.append(f"<table><tr>{cells}</tr></table>")
+    return "".join(parts)
+
+
 def fill_template(html: str, fields: dict[str, Any]) -> str:
     """Replace merge-field labels with values from load_template_data."""
     row_count = _row_count(fields)

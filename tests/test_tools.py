@@ -6,12 +6,13 @@ import httpx2
 import pytest
 
 from taxer_mcp.client import TaxerClient
-from taxer_mcp.models import ActLine
+from taxer_mcp.models import ActLine, MergeField
 from taxer_mcp.server import (
     ToolError,
     create_act,
     create_contract,
     create_invoice,
+    create_print_template,
     export_document_pdf,
     get_document,
     get_operation,
@@ -52,6 +53,7 @@ def test_server_registers_document_tools():
         "create_contract",
         "create_invoice",
         "create_act",
+        "create_print_template",
     }
 
 
@@ -76,6 +78,55 @@ def test_list_print_templates_tool_returns_titles(monkeypatch):
     assert result["templates"][1]["title"] == "Invoice"
     assert result["templates"][1]["id"] == 9
     assert "data" not in result
+
+
+def test_create_print_template_sends_merge_fields(monkeypatch):
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"id": 15})
+
+    _install(monkeypatch, handler)
+    result = create_print_template(
+        "Example invoice",
+        "invoice_foreign",
+        fields=[
+            MergeField(name="contractorName", display_name="Customer"),
+            MergeField(name="contentQuantity", display_name="Quantity", multiple=True),
+        ],
+    )
+
+    assert result == {"id": 15}
+    html = seen["body"]["template"]["data"]
+    assert 'data-name="contractorName"' in html
+    assert 'data-decorator-type="mergefield"' in html
+    assert 'data-multiple="true"' in html
+    assert "<tr>" in html
+    assert seen["body"]["template"]["type"] == "invoice_foreign"
+    assert seen["body"]["template"]["title"] == "Example invoice"
+
+
+def test_create_print_template_copies_the_public_layout(monkeypatch):
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path == "/api2/finances/template/load_public_data":
+            return httpx2.Response(200, json=_load("public_template.json"))
+        body = json.loads(request.content)
+        assert body["template"]["data"] == '<p><span data-name="invoiceNum">Number</span></p>'
+        return httpx2.Response(200, json={"id": 16})
+
+    _install(monkeypatch, handler)
+    assert create_print_template("Copy", "invoice", copy_public=True) == {"id": 16}
+
+
+def test_create_print_template_rejects_an_empty_layout():
+    with pytest.raises(ToolError, match="html, fields, or copy_public"):
+        create_print_template("Example", "invoice")
+
+
+def test_create_print_template_rejects_an_unknown_type():
+    with pytest.raises(ToolError, match="template_type"):
+        create_print_template("Example", "receipt", html="<p>Example</p>")
 
 
 def test_list_documents_rejects_page_zero():

@@ -1,0 +1,9 @@
+{
+  "template": {
+    "id": 8,
+    "title": "Invoice (standard template)",
+    "type": "invoice_foreign",
+    "isPublic": true,
+    "data": "<p><span data-name=\"invoiceNum\">Number</span></p>"
+  }
+}

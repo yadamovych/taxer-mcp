@@ -165,6 +165,47 @@ def test_list_print_templates_sends_empty_params_and_keeps_titles():
     assert page.templates[1].isDefault is True
 
 
+def test_create_print_template_posts_title_type_and_html():
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["request"] = request
+        return httpx2.Response(200, json={"id": 15})
+
+    created = _client(handler).create_print_template(
+        "Example invoice",
+        "invoice_foreign",
+        "<p>Example</p>",
+    )
+
+    request = seen["request"]
+    assert request.method == "POST"
+    assert request.url.path == "/api2/finances/template/create"
+    assert json.loads(request.content) == {
+        "template": {
+            "title": "Example invoice",
+            "type": "invoice_foreign",
+            "data": "<p>Example</p>",
+        }
+    }
+    assert created.id == 15
+
+
+def test_load_public_print_template_requests_the_type():
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["request"] = request
+        return httpx2.Response(200, json=_load("public_template.json"))
+
+    template = _client(handler).load_public_print_template("invoice_foreign")
+
+    request = seen["request"]
+    assert request.url.path == "/api2/finances/template/load_public_data"
+    assert json.loads(request.url.params["params"]) == {"type": "invoice_foreign"}
+    assert template["data"].startswith("<p>")
+
+
 def test_list_accounts_sends_paged_params_query():
     seen = {}
 

@@ -4,6 +4,7 @@ Taxer does not publish this API. Document and operation paths are the ones
 already called by py-taxer-api. Template PDF export uses the cabinet calls
 ``load_template_data``, ``api2/finances/template/load``,
 ``api2/finances/template/load_data``,
+``api2/finances/template/load_public_data``, ``api2/finances/template/create``,
 ``api2/generator/file/converter_token``, and ``upload_file`` (with
 ``generated`` set, which is how the document editor stores the filled
 template). Do not discover new paths by probing taxer.ua. ``XSRF-TOKEN`` is
@@ -212,6 +213,26 @@ class TaxerClient:
             params=self._query({}),
         )
         return PrintTemplatePage.model_validate(payload)
+
+    def load_public_print_template(self, template_type: str) -> dict[str, Any]:
+        payload = self._execute(
+            "GET",
+            "api2/finances/template/load_public_data",
+            params=self._query({"type": template_type}),
+        )
+        template = payload.get("template") if isinstance(payload, dict) else None
+        if not isinstance(template, dict):
+            raise TaxerError("Taxer public template response has no template object")
+        return template
+
+    def create_print_template(self, title: str, template_type: str, html: str) -> CreatedEntity:
+        payload = self._execute(
+            "POST",
+            "api2/finances/template/create",
+            params={"lang": self.lang},
+            json_body={"template": {"title": title, "type": template_type, "data": html}},
+        )
+        return CreatedEntity.model_validate(payload)
 
     def load_print_template(self, template_id: int) -> dict[str, Any]:
         payload = self._execute(
