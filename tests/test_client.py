@@ -219,6 +219,19 @@ def test_update_print_template_posts_the_existing_id():
     assert updated.id == 15
 
 
+def test_update_print_template_accepts_an_empty_body():
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, content=b"")
+
+    updated = _client(handler).update_print_template(
+        15,
+        "Example invoice",
+        "invoice_foreign",
+        "<p>Updated</p>",
+    )
+    assert updated.id == 15
+
+
 def test_load_public_print_template_requests_the_type():
     seen = {}
 

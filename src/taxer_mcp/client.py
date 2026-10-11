@@ -250,6 +250,7 @@ class TaxerClient:
                     "data": html,
                 }
             },
+            empty_ok=True,
         )
         if isinstance(payload, dict) and isinstance(payload.get("id"), int):
             return CreatedEntity.model_validate(payload)
@@ -367,8 +368,11 @@ class TaxerClient:
         *,
         params: dict[str, Any] | None = None,
         json_body: dict[str, Any] | None = None,
+        empty_ok: bool = False,
     ) -> Any:
         response = self._request(method, path, params=params, json_body=json_body)
+        if empty_ok and not response.content.strip():
+            return {}
         try:
             return response.json()
         except ValueError as exc:
