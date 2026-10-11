@@ -5,6 +5,7 @@ already called by py-taxer-api. Template PDF export uses the cabinet calls
 ``load_template_data``, ``api2/finances/template/load``,
 ``api2/finances/template/load_data``,
 ``api2/finances/template/load_public_data``, ``api2/finances/template/create``,
+``api2/finances/template/update``,
 ``api2/generator/file/converter_token``, and ``upload_file`` (with
 ``generated`` set, which is how the document editor stores the filled
 template). Do not discover new paths by probing taxer.ua. ``XSRF-TOKEN`` is
@@ -233,6 +234,26 @@ class TaxerClient:
             json_body={"template": {"title": title, "type": template_type, "data": html}},
         )
         return CreatedEntity.model_validate(payload)
+
+    def update_print_template(
+        self, template_id: int, title: str, template_type: str, html: str
+    ) -> CreatedEntity:
+        payload = self._execute(
+            "POST",
+            "api2/finances/template/update",
+            params={"lang": self.lang},
+            json_body={
+                "template": {
+                    "id": template_id,
+                    "title": title,
+                    "type": template_type,
+                    "data": html,
+                }
+            },
+        )
+        if isinstance(payload, dict) and isinstance(payload.get("id"), int):
+            return CreatedEntity.model_validate(payload)
+        return CreatedEntity(id=template_id)
 
     def load_print_template(self, template_id: int) -> dict[str, Any]:
         payload = self._execute(

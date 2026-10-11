@@ -333,6 +333,53 @@ def create_print_template(
 
 
 @mcp.tool()
+def update_print_template(
+    template_id: int,
+    title: str | None = None,
+    template_type: str | None = None,
+    html: str | None = None,
+    fields: list[MergeField] | None = None,
+    copy_public: bool = False,
+) -> dict[str, int]:
+    """Update one saved Taxer print template.
+
+    template_id is an id from list_print_templates. Omit title or
+    template_type to keep the saved value. html replaces the layout. fields
+    are variables appended to the current layout when html is omitted, or to
+    html when it is set. copy_public replaces the layout with Taxer's
+    predefined layout for the template type. A public standard template
+    cannot be updated. Returns the same template id.
+    """
+    if template_id < 1:
+        raise ToolError("template_id starts at 1")
+    if template_type is not None:
+        _require_print_template_type(template_type)
+    if title is not None and not title.strip():
+        raise ToolError("title is empty")
+    parsed_fields = _parse_merge_fields(fields)
+    if (
+        title is None
+        and template_type is None
+        and html is None
+        and not parsed_fields
+        and not copy_public
+    ):
+        raise ToolError("An update needs a title, template_type, html, fields, or copy_public")
+
+    def run(client: TaxerClient) -> dict[str, int]:
+        current = client.load_print_template(template_id)
+        if current.get("isPublic") is True:
+            raise ToolError("A public Taxer template is read-only")
+        next_title = _template_title(title, current.get("title"))
+        next_type = _template_type(template_type, current.get("type"))
+        layout = _updated_template_html(client, current, next_type, html, parsed_fields, copy_public)
+        client.update_print_template(template_id, next_title, next_type, layout)
+        return {"id": template_id}
+
+    return _call(run)
+
+
+@mcp.tool()
 def export_document_pdf(
     user_id: int,
     document_id: int,
@@ -399,6 +446,43 @@ def _create(doc_type: str, **fields: Any) -> dict[str, int]:
         return {"id": created.id}
 
     return _call(run)
+
+
+def _template_title(title: str | None, current: Any) -> str:
+    if title is not None:
+        return title.strip()
+    if isinstance(current, str) and current.strip():
+        return current.strip()
+    raise ToolError("title is empty")
+
+
+def _template_type(template_type: str | None, current: Any) -> str:
+    if template_type is not None:
+        return template_type
+    if isinstance(current, str) and current in PRINT_TEMPLATE_TYPES:
+        return current
+    raise ToolError("template_type is missing on the saved template")
+
+
+def _updated_template_html(
+    client: TaxerClient,
+    current: dict[str, Any],
+    template_type: str,
+    html: str | None,
+    fields: list[MergeField] | None,
+    copy_public: bool,
+) -> str:
+    if html is not None or copy_public:
+        return _template_html(client, template_type, html, fields, copy_public)
+    data = current.get("data")
+    layout = data if isinstance(data, str) else ""
+    if fields:
+        layout += template_pdf.merge_fields_html(
+            [(field.name, field.display_name, field.multiple) for field in fields]
+        )
+    if not layout.strip():
+        raise ToolError("The template has no layout")
+    return layout
 
 
 def _template_html(

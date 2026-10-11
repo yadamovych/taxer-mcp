@@ -1,0 +1,10 @@
+{
+  "template": {
+    "id": 15,
+    "title": "Example invoice",
+    "type": "invoice_foreign",
+    "isPublic": false,
+    "isDefault": false,
+    "data": "<p>Existing</p>"
+  }
+}

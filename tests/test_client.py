@@ -191,6 +191,34 @@ def test_create_print_template_posts_title_type_and_html():
     assert created.id == 15
 
 
+def test_update_print_template_posts_the_existing_id():
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["request"] = request
+        return httpx2.Response(200, json={})
+
+    updated = _client(handler).update_print_template(
+        15,
+        "Example invoice",
+        "invoice_foreign",
+        "<p>Updated</p>",
+    )
+
+    request = seen["request"]
+    assert request.method == "POST"
+    assert request.url.path == "/api2/finances/template/update"
+    assert json.loads(request.content) == {
+        "template": {
+            "id": 15,
+            "title": "Example invoice",
+            "type": "invoice_foreign",
+            "data": "<p>Updated</p>",
+        }
+    }
+    assert updated.id == 15
+
+
 def test_load_public_print_template_requests_the_type():
     seen = {}
 

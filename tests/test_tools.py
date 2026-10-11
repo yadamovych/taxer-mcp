@@ -21,6 +21,7 @@ from taxer_mcp.server import (
     list_operations,
     list_print_templates,
     list_profiles,
+    update_print_template,
     mcp,
 )
 
@@ -125,6 +126,46 @@ def test_create_print_template_rejects_an_empty_layout():
 
 
 def test_create_print_template_rejects_an_unknown_type():
+def test_update_print_template_appends_fields_to_the_saved_layout(monkeypatch):
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path == "/api2/finances/template/load_data":
+            return httpx2.Response(200, json=_load("print_template.json"))
+        seen["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"id": 15})
+
+    _install(monkeypatch, handler)
+    result = update_print_template(
+        15,
+        fields=[MergeField(name="accountTitle", display_name="Account")],
+    )
+
+    assert result == {"id": 15}
+    template = seen["body"]["template"]
+    assert template["id"] == 15
+    assert template["title"] == "Example invoice"
+    assert template["type"] == "invoice_foreign"
+    assert template["data"].startswith("<p>Existing</p>")
+    assert 'data-name="accountTitle"' in template["data"]
+
+
+def test_update_print_template_rejects_a_public_template(monkeypatch):
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        payload = _load("print_template.json")
+        payload["template"]["isPublic"] = True
+        return httpx2.Response(200, json=payload)
+
+    _install(monkeypatch, handler)
+    with pytest.raises(ToolError, match="read-only"):
+        update_print_template(8, title="Renamed")
+
+
+def test_update_print_template_rejects_an_empty_change():
+    with pytest.raises(ToolError, match="title, template_type, html, fields, or copy_public"):
+        update_print_template(15)
+
+
     with pytest.raises(ToolError, match="template_type"):
         create_print_template("Example", "receipt", html="<p>Example</p>")
 
