@@ -37,6 +37,9 @@ from taxer_mcp.models import (
 DEFAULT_BASE_URL = "https://taxer.ua"
 # Public build id from the Taxer web app. Requests without it are not treated as the cabinet.
 REVISION = "app:Y45z63lutzk5p0XR"
+REQUIRED_SESSION_COOKIES = ("PHPSESSID", "session_key", "session_hash", "session_key_hash")
+DEFAULT_DOCUMENT_PAGE_CAP = 20
+MAX_DOCUMENT_PAGE_CAP = 50
 _TAXER_HTTP_ATTEMPTS = 3
 _TAXER_RETRY_BACKOFF_SEC = (0.75, 2.0)
 
@@ -76,14 +79,21 @@ class TaxerClient:
         *,
         base_url: str = DEFAULT_BASE_URL,
         lang: str = "uk",
+        revision: str | None = None,
         client: httpx2.Client | None = None,
     ) -> None:
         self._cookies = parse_cookie_header(cookie)
-        if "session_hash" not in self._cookies:
-            raise TaxerError("TAXER_COOKIE must include session_hash")
+        missing = [
+            name
+            for name in REQUIRED_SESSION_COOKIES
+            if not self._cookies.get(name)
+        ]
+        if missing:
+            raise TaxerError("TAXER_COOKIE is missing " + ", ".join(missing))
         token = self._cookies.get("XSRF-TOKEN")
         self.lang = lang
         self.base_url = base_url.rstrip("/")
+        self.revision = revision or REVISION
         self._token = unquote(token) if token else None
         self._owns_client = client is None
         self._client = client or httpx2.Client(base_url=self.base_url, timeout=30.0)
@@ -106,7 +116,12 @@ class TaxerClient:
             raise TaxerError("Taxer account response has no account object")
         return Account.model_validate(account)
 
-    def list_documents(self, user_id: int, page_number: int = 1) -> DocumentPage:
+    def list_documents(
+        self,
+        user_id: int,
+        page_number: int = 1,
+        filters: dict[str, Any] | None = None,
+    ) -> DocumentPage:
         payload = self._execute(
             "GET",
             "api/finances/document/load",
@@ -115,11 +130,42 @@ class TaxerClient:
                     "userId": user_id,
                     "pageNumber": page_number,
                     "sorting": {"date": "DESC"},
-                    "filters": {},
+                    "filters": filters or {},
                 }
             ),
         )
         return DocumentPage.model_validate(payload)
+
+    def find_document(
+        self,
+        user_id: int,
+        document_type: str,
+        number: str,
+        *,
+        filters: dict[str, Any] | None = None,
+        page_cap: int = DEFAULT_DOCUMENT_PAGE_CAP,
+    ) -> Document | None:
+        """Return the first document with this type and number, newest first.
+
+        Reads ``api/finances/document/load`` from page 1 and stops on the
+        first match, the last page, or ``page_cap``.
+        """
+        if page_cap < 1 or page_cap > MAX_DOCUMENT_PAGE_CAP:
+            raise TaxerError(f"page_cap must be from 1 to {MAX_DOCUMENT_PAGE_CAP}")
+        wanted = str(number)
+        for page_number in range(1, page_cap + 1):
+            page = self.list_documents(user_id, page_number, filters)
+            for document in page.documents:
+                if (
+                    document.type == document_type
+                    and document.number is not None
+                    and str(document.number) == wanted
+                ):
+                    return document
+            total_pages = page.paginator.totalPages if page.paginator and page.paginator.totalPages else page_number
+            if page_number >= total_pages:
+                break
+        return None
 
     def get_document(self, user_id: int, document_id: int, document_type: str) -> Document:
         payload = self._execute(
@@ -136,7 +182,12 @@ class TaxerClient:
             payload = payload["document"]
         return Document.model_validate(payload)
 
-    def list_accounts(self, user_id: int, page_number: int = 1) -> MoneyAccountPage:
+    def list_accounts(
+        self,
+        user_id: int,
+        page_number: int = 1,
+        filters: dict[str, Any] | None = None,
+    ) -> MoneyAccountPage:
         payload = self._execute(
             "GET",
             "api/finances/account/load",
@@ -144,13 +195,18 @@ class TaxerClient:
                 {
                     "userId": user_id,
                     "pageNumber": page_number,
-                    "filters": {},
+                    "filters": filters or {},
                 }
             ),
         )
         return MoneyAccountPage.model_validate(payload)
 
-    def list_operations(self, user_id: int, page_number: int = 1) -> OperationPage:
+    def list_operations(
+        self,
+        user_id: int,
+        page_number: int = 1,
+        filters: dict[str, Any] | None = None,
+    ) -> OperationPage:
         payload = self._execute(
             "GET",
             "api/finances/operation/load",
@@ -159,7 +215,7 @@ class TaxerClient:
                     "userId": user_id,
                     "pageNumber": page_number,
                     "sorting": {"date": "DESC"},
-                    "filters": {},
+                    "filters": filters or {},
                 }
             ),
         )
@@ -383,7 +439,7 @@ class TaxerClient:
             "Accept": "application/json, text/plain, */*",
             "Content-Type": "application/json; charset=UTF-8",
             "Referer": f"{self.base_url}/{self.lang}/my/dashboard",
-            "Revision": REVISION,
+            "Revision": self.revision,
             "User-Agent": "taxer-mcp/0.1",
             "X-Requested-With": "XMLHttpRequest",
         }

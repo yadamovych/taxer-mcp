@@ -7,7 +7,11 @@ import pytest
 from taxer_mcp.client import TaxerClient, TaxerError
 
 FIXTURES = Path(__file__).parent / "fixtures"
-COOKIE = "XSRF-TOKEN=abc%3Dtoken; session_hash=sess-1"
+COOKIE = (
+    "XSRF-TOKEN=abc%3Dtoken; PHPSESSID=php-1; session_key=key-1; "
+    "session_hash=sess-1; session_key_hash=hash-1"
+)
+SESSION_COOKIE = "PHPSESSID=php-1; session_key=key-1; session_hash=sess-1; session_key_hash=hash-1"
 
 
 def _load(name: str) -> dict:
@@ -20,12 +24,17 @@ def _client(handler) -> TaxerClient:
     return TaxerClient(COOKIE, base_url="https://taxer.test", lang="uk", client=http)
 
 
-def test_cookie_requires_session_hash():
-    with pytest.raises(TaxerError, match="session_hash"):
+def test_cookie_names_every_missing_session_cookie():
+    with pytest.raises(TaxerError, match="PHPSESSID, session_key, session_hash, session_key_hash"):
         TaxerClient("XSRF-TOKEN=only")
 
 
-def test_session_hash_alone_does_not_send_xsrf_header():
+def test_cookie_names_only_the_missing_session_cookies():
+    with pytest.raises(TaxerError, match="session_key, session_key_hash"):
+        TaxerClient("PHPSESSID=php-1; session_hash=sess-1")
+
+
+def test_full_cookie_without_xsrf_does_not_send_xsrf_header():
     seen = {}
 
     def handler(request: httpx2.Request) -> httpx2.Response:
@@ -34,7 +43,7 @@ def test_session_hash_alone_does_not_send_xsrf_header():
 
     transport = httpx2.MockTransport(handler)
     http = httpx2.Client(transport=transport)
-    client = TaxerClient("session_hash=sess-1", base_url="https://taxer.test", client=http)
+    client = TaxerClient(SESSION_COOKIE, base_url="https://taxer.test", client=http)
     client.load_account()
 
     assert "X-XSRF-TOKEN" not in seen["request"].headers
@@ -86,6 +95,91 @@ def test_list_documents_sends_paged_params_query():
     assert page.documents[0].id == 15
     assert page.documents[0].date is not None
     assert page.documents[0].date.year == 2024
+
+
+def test_list_documents_forwards_filters():
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["request"] = request
+        return httpx2.Response(200, json=_load("documents.json"))
+
+    _client(handler).list_documents(200664, 1, {"type": "invoice"})
+
+    assert json.loads(seen["request"].url.params["params"])["filters"] == {"type": "invoice"}
+
+
+def test_revision_header_uses_the_constructor_value():
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["request"] = request
+        return httpx2.Response(200, json=_load("account.json"))
+
+    transport = httpx2.MockTransport(handler)
+    http = httpx2.Client(transport=transport)
+    client = TaxerClient(COOKIE, base_url="https://taxer.test", revision="app:override", client=http)
+    client.load_account()
+
+    assert seen["request"].headers["Revision"] == "app:override"
+
+
+def test_find_document_stops_on_the_first_page_match():
+    seen = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        params = json.loads(request.url.params["params"])
+        seen.append(params["pageNumber"])
+        body = _load("documents.json")
+        body["paginator"]["totalPages"] = 4
+        return httpx2.Response(200, json=body)
+
+    found = _client(handler).find_document(200664, "contract", "15")
+
+    assert seen == [1]
+    assert found is not None
+    assert found.id == 15
+
+
+def test_find_document_reads_the_next_page_and_honors_the_page_cap():
+    seen = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        params = json.loads(request.url.params["params"])
+        page_number = params["pageNumber"]
+        seen.append(page_number)
+        documents = []
+        if page_number == 2:
+            documents = [{"id": 20, "type": "invoice", "number": "INV-2", "timestamp": 1711929600}]
+        return httpx2.Response(
+            200,
+            json={
+                "paginator": {
+                    "currentPage": page_number,
+                    "recordsOnPage": 20,
+                    "totalPages": 5,
+                    "totalRecords": 80,
+                },
+                "documents": documents,
+            },
+        )
+
+    client = _client(handler)
+    found = client.find_document(200664, "invoice", "INV-2", page_cap=3)
+    missing = client.find_document(200664, "invoice", "INV-9", page_cap=2)
+
+    assert found is not None
+    assert found.id == 20
+    assert missing is None
+    assert seen == [1, 2, 1, 2]
+
+
+def test_find_document_rejects_a_page_cap_above_the_limit():
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        raise AssertionError("request should not be sent")
+
+    with pytest.raises(TaxerError, match="page_cap"):
+        _client(handler).find_document(200664, "invoice", "1", page_cap=51)
 
 
 def test_get_document_unwraps_document_object():

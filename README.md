@@ -9,13 +9,14 @@ Taxer does not publish a public API. This server calls the same internal endpoin
 | Tool | What it does |
 | --- | --- |
 | `list_profiles` | Account name and each FOP or company profile. The profile `id` is `user_id` for the other tools. |
-| `list_documents` | One page of documents for a profile. |
+| `list_documents` | One page of documents for a profile. An optional `filters` object is forwarded to Taxer. |
+| `find_document` | First document of a type and number, newest first, within a page cap. Use this before creating an invoice so the same number is not created twice. |
 | `get_document` | One contract, invoice, or act. |
 | `create_contract` | Create a contract. |
 | `create_invoice` | Create an invoice, including VAT (`nds`) and optional line items. |
 | `create_act` | Create an act, including line items. |
-| `list_accounts` | One page of money accounts (bank and cash) for a profile. |
-| `list_operations` | One page of bank operations for a profile. |
+| `list_accounts` | One page of money accounts (bank and cash) for a profile. An optional `filters` object is forwarded to Taxer. |
+| `list_operations` | One page of bank operations for a profile. An optional `filters` object is forwarded to Taxer. |
 | `get_operation` | One operation: Withdrawal, FlowOutgo, FlowIncome, CurrencyExchange, or AutoExchange. |
 | `list_print_templates` | Print templates on the account. Each item includes `id`, `title` (the cabinet name), `type`, `isDefault`, and `isPublic`. |
 | `create_print_template` | Create a print template. Pass HTML, merge-field variables, or `copy_public` to start from Taxer's predefined layout for that type. Returns the new template id. |
@@ -44,7 +45,7 @@ cp .env.example .env
 TAXER_COOKIE="paste the Cookie header here"
 ```
 
-Keep the double quotes. The cookie contains semicolons. `TAXER_BASE_URL` and `TAXER_LANG` override the defaults `https://taxer.ua` and `uk`.
+Keep the double quotes. The cookie contains semicolons. `TAXER_BASE_URL` and `TAXER_LANG` override the defaults `https://taxer.ua` and `uk`. `TAXER_REVISION` overrides the cabinet build id sent as the `Revision` header. Leave it unset unless Taxer rejects the built-in value.
 
 Reload the window, then enable **taxer** under Customize. Cursor asks before each tool call. Output → MCP Logs shows startup errors. If `uv` is missing from that log, install it or put its full path in `command`.
 
@@ -112,3 +113,9 @@ uv run pytest
 ```
 
 Tests mock Taxer's HTTP API. They do not call the live site.
+
+## Invoice checks
+
+`scripts/billing_period.py 2026-10` prints the Europe/Kyiv month as JSON: ISO `start` and `end`, plus English `start_en` and `end_en`. It takes no profile, amount, or client name.
+
+`scripts/validate_invoice_pdf.py` checks an exported invoice PDF for the number, dates, line description, quantity, unit label, prices, and currency you pass in. It does not contain a sample invoice. Install its dependency with `uv sync --group automation`.

@@ -11,7 +11,7 @@ from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
 from taxer_mcp import template_pdf
-from taxer_mcp.client import TaxerClient, TaxerError
+from taxer_mcp.client import DEFAULT_DOCUMENT_PAGE_CAP, MAX_DOCUMENT_PAGE_CAP, TaxerClient, TaxerError
 from taxer_mcp.models import (
     DOCUMENT_TYPES,
     OPERATION_TYPES,
@@ -29,10 +29,12 @@ def get_client() -> TaxerClient:
     cookie = os.environ.get("TAXER_COOKIE", "").strip()
     if not cookie:
         raise TaxerError("TAXER_COOKIE is not set")
+    revision = os.environ.get("TAXER_REVISION", "").strip() or None
     return TaxerClient(
         cookie,
         base_url=os.environ.get("TAXER_BASE_URL", "https://taxer.ua"),
         lang=os.environ.get("TAXER_LANG", "uk"),
+        revision=revision,
     )
 
 
@@ -60,17 +62,59 @@ def list_profiles() -> dict[str, Any]:
 
 
 @mcp.tool()
-def list_documents(user_id: int, page_number: int = 1) -> dict[str, Any]:
+def list_documents(
+    user_id: int,
+    page_number: int = 1,
+    filters: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """List one page of finance documents for a Taxer profile.
 
     user_id is a profile id from list_profiles. page_number starts at 1.
-    The page includes contracts, invoices, and acts.
+    The page includes contracts, invoices, and acts. filters is an optional
+    object forwarded to Taxer. Omit it to list the page unfiltered.
     """
     if page_number < 1:
         raise ToolError("page_number starts at 1")
 
     def run(client: TaxerClient) -> dict[str, Any]:
-        return dump_model(client.list_documents(user_id, page_number))
+        return dump_model(client.list_documents(user_id, page_number, filters))
+
+    return _call(run)
+
+
+@mcp.tool()
+def find_document(
+    user_id: int,
+    document_type: str,
+    number: str,
+    page_cap: int = DEFAULT_DOCUMENT_PAGE_CAP,
+    filters: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Find one finance document by type and number.
+
+    Walks the document list from page 1, newest first, and stops on the
+    first match. page_cap limits how many pages are read (1 to 50, default
+    20). filters is an optional object forwarded to Taxer. Returns found
+    false when the document is not in those pages, so a monthly run can
+    refuse to create a second invoice with the same number.
+    """
+    _require_document_type(document_type)
+    if page_cap < 1 or page_cap > MAX_DOCUMENT_PAGE_CAP:
+        raise ToolError(f"page_cap must be from 1 to {MAX_DOCUMENT_PAGE_CAP}")
+    if not str(number).strip():
+        raise ToolError("number is empty")
+
+    def run(client: TaxerClient) -> dict[str, Any]:
+        document = client.find_document(
+            user_id,
+            document_type,
+            number,
+            filters=filters,
+            page_cap=page_cap,
+        )
+        if document is None:
+            return {"found": False}
+        return {"found": True, "document": dump_model(document)}
 
     return _call(run)
 
@@ -90,32 +134,42 @@ def get_document(user_id: int, document_id: int, document_type: str) -> dict[str
 
 
 @mcp.tool()
-def list_accounts(user_id: int, page_number: int = 1) -> dict[str, Any]:
+def list_accounts(
+    user_id: int,
+    page_number: int = 1,
+    filters: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """List one page of money accounts for a Taxer profile.
 
     user_id is a profile id from list_profiles. page_number starts at 1.
     An account id from this list is account_id on an invoice or act.
+    filters is an optional object forwarded to Taxer.
     """
     if page_number < 1:
         raise ToolError("page_number starts at 1")
 
     def run(client: TaxerClient) -> dict[str, Any]:
-        return dump_model(client.list_accounts(user_id, page_number))
+        return dump_model(client.list_accounts(user_id, page_number, filters))
 
     return _call(run)
 
 
 @mcp.tool()
-def list_operations(user_id: int, page_number: int = 1) -> dict[str, Any]:
+def list_operations(
+    user_id: int,
+    page_number: int = 1,
+    filters: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """List one page of bank operations for a Taxer profile.
 
     user_id is a profile id from list_profiles. page_number starts at 1.
+    filters is an optional object forwarded to Taxer.
     """
     if page_number < 1:
         raise ToolError("page_number starts at 1")
 
     def run(client: TaxerClient) -> dict[str, Any]:
-        return dump_model(client.list_operations(user_id, page_number))
+        return dump_model(client.list_operations(user_id, page_number, filters))
 
     return _call(run)
 
