@@ -14,6 +14,8 @@ from taxer_mcp.server import (
     create_invoice,
     create_print_template,
     export_document_pdf,
+    find_document,
+    get_client,
     get_document,
     get_operation,
     list_accounts,
@@ -34,7 +36,11 @@ def _load(name: str) -> dict:
 
 def _install(monkeypatch, handler):
     http = httpx2.Client(transport=httpx2.MockTransport(handler))
-    client = TaxerClient("session_hash=token", base_url="https://taxer.test", client=http)
+    client = TaxerClient(
+        "PHPSESSID=php; session_key=key; session_hash=token; session_key_hash=hash",
+        base_url="https://taxer.test",
+        client=http,
+    )
     monkeypatch.setattr("taxer_mcp.server.get_client", lambda: client)
     return client
 
@@ -45,6 +51,7 @@ def test_server_registers_document_tools():
     assert names == {
         "list_profiles",
         "list_documents",
+        "find_document",
         "get_document",
         "list_accounts",
         "list_operations",
@@ -176,6 +183,43 @@ def test_list_documents_rejects_page_zero():
         list_documents(1, 0)
 
 
+def test_find_document_tool_returns_the_match(monkeypatch):
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json=_load("documents.json"))
+
+    _install(monkeypatch, handler)
+    result = find_document(200664, "contract", "15")
+
+    assert result["found"] is True
+    assert result["document"]["id"] == 15
+    assert result["document"]["number"] == "15"
+
+
+def test_find_document_tool_reports_a_miss(monkeypatch):
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        body = _load("documents.json")
+        body["paginator"]["totalPages"] = 1
+        return httpx2.Response(200, json=body)
+
+    _install(monkeypatch, handler)
+    result = find_document(200664, "invoice", "15", page_cap=1)
+
+    assert result == {"found": False}
+
+
+def test_client_uses_taxer_revision_from_the_environment(monkeypatch):
+    monkeypatch.setenv(
+        "TAXER_COOKIE",
+        "PHPSESSID=php; session_key=key; session_hash=token; session_key_hash=hash",
+    )
+    monkeypatch.setenv("TAXER_REVISION", "app:from-env")
+
+    client = get_client()
+
+    assert client.revision == "app:from-env"
+    client.close()
+
+
 def test_get_document_rejects_unknown_type():
     with pytest.raises(ToolError, match="document_type"):
         get_document(1, 2, "waybill")
@@ -247,17 +291,17 @@ def test_create_invoice_sends_lines_parent_and_foreign_flag(monkeypatch):
         number="TEST",
         direction=0,
         currency="EUR",
-        title="TEST Рахунок",
-        total=7035,
+        title="Рахунок",
+        total=200,
         contractor_id=1,
         lines=[
             ActLine(
-                title="Послуги комп’ютерного програмування",
-                measure="днів",
-                quantity=21,
-                price=335,
-                title_tf="Computer programming services",
-                measure_tf="days",
+                title="Консультаційні послуги",
+                measure="год",
+                quantity=2,
+                price=100,
+                title_tf="Consulting services",
+                measure_tf="hours",
             )
         ],
         account_id=2,
@@ -274,12 +318,12 @@ def test_create_invoice_sends_lines_parent_and_foreign_flag(monkeypatch):
     assert document["parent"] == {"id": 1, "type": "contract"}
     assert document["contents"] == [
         {
-            "title": "Послуги комп’ютерного програмування",
-            "titleTf": "Computer programming services",
-            "measure": "днів",
-            "measureTf": "days",
-            "quantity": 21,
-            "price": 335,
+            "title": "Консультаційні послуги",
+            "titleTf": "Consulting services",
+            "measure": "год",
+            "measureTf": "hours",
+            "quantity": 2,
+            "price": 100,
         }
     ]
 

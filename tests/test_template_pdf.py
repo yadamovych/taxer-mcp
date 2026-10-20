@@ -44,7 +44,7 @@ def test_fill_template_replaces_labels_and_repeats_line_rows():
         {
             "invoiceNum": "INV-1",
             "nomenclatureNumber": [1, 2],
-            "contentTfNomenclature": ["Computer programming services", "Support"],
+            "contentTfNomenclature": ["Consulting services", "Support"],
         },
     )
 
@@ -52,7 +52,7 @@ def test_fill_template_replaces_labels_and_repeats_line_rows():
     assert "Line description" not in filled
     assert filled.count("INV-1") == 1
     assert filled.count("<tr>") == 3
-    assert "Computer programming services" in filled
+    assert "Consulting services" in filled
     assert "Support" in filled
     assert ">1<" in filled
     assert ">2<" in filled
@@ -156,7 +156,11 @@ def test_export_document_pdf_tool_writes_filled_template(monkeypatch, tmp_path):
         return httpx2.Response(404, text=request.url.path)
 
     http = httpx2.Client(transport=httpx2.MockTransport(handler))
-    client = TaxerClient("session_hash=token", base_url="https://taxer.test", client=http)
+    client = TaxerClient(
+        "PHPSESSID=php; session_key=key; session_hash=token; session_key_hash=hash",
+        base_url="https://taxer.test",
+        client=http,
+    )
     monkeypatch.setattr("taxer_mcp.server.get_client", lambda: client)
 
     def fake_convert(html: str, token: str, url: str) -> bytes:

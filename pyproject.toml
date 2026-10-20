@@ -17,6 +17,9 @@ taxer-mcp = "taxer_mcp.server:main"
 dev = [
     "pytest>=8",
 ]
+automation = [
+    "pypdf>=5",
+]
 
 [build-system]
 requires = ["hatchling"]
